@@ -9,6 +9,7 @@
 //   {action:"login",       code, pin}                 → 학생 확인
 //   {action:"home",        code, pin}                 → 오늘 과제 + 내 진도 + 최근 리포트 + 월말평가서 링크
 //   {action:"toggle-task", code, pin, task_id, done}  → 과제 체크/해제
+//   {action:"answer",      code, pin, subject}        → 📖 그 과목 **지금 진도 유닛**의 답지 (학원 와이파이에서만)
 //
 // ⚠️ 학생은 '자기 것'만 볼 수 있어야 한다. 아래 모든 조회에 student_id=eq.<본인> 이 붙어 있다.
 //    이 조건을 빼면 다른 학생 기록이 보인다 — 수정할 때 꼭 유지할 것.
@@ -16,6 +17,8 @@
 import { select, patch, dbConfigured, DbInputError } from "../lib/db.js";
 import { kstNow } from "../lib/time.js";
 import { normUnit } from "../lib/progress.js";
+import { onAcademyWifi, wifiBlockedMessage } from "../lib/wifi.js";
+import { signDownload } from "../lib/storage.js";
 
 const RECENT_DAYS = 14; // 학생앱에 보여줄 최근 리포트 기간
 
@@ -37,6 +40,42 @@ async function auth(body) {
   const s = rows[0];
   if (!s || s.status === "퇴원") return null;
   return s;
+}
+
+// 학생의 **지금 진도** (오늘 행이 있으면 오늘, 없으면 가장 최근 수업) — 홈과 답지가 같은 기준을 씁니다
+async function currentBase(stu, date) {
+  const [today, recent] = await Promise.all([
+    select("daily_records", `student_id=eq.${stu.id}&date=eq.${date}`),
+    select("daily_records", `student_id=eq.${stu.id}&date=lte.${date}&order=date.desc&limit=1`),
+  ]);
+  return today[0] || recent[0] || null;
+}
+
+// 과목별 [교재명, 유닛코드] → 답지 행 (없는 건 빠짐).
+//   ⚠️ 답지 표(answer_keys)가 아직 없는 DB 에서도 학생앱 홈이 깨지면 안 돼서, 실패하면 빈 값.
+async function answersFor(base, stu) {
+  const pairs = Object.entries(base?.progress || {}).map(([subject, u]) => ({
+    subject,
+    book: (base?.books || {})[subject] || (stu.books || {})[subject] || "",
+    code: normUnit(u)?.code || "",
+  })).filter((p) => p.book && p.code);
+  if (!pairs.length) return {};
+  try {
+    // 교재 표는 작아서(수십 권) 통째로 이름·id 만 가져옵니다
+    const books = await select("textbooks", "select=id,name");
+    const idOf = Object.fromEntries(books.map((t) => [t.name, t.id]));
+    const ids = [...new Set(pairs.map((p) => idOf[p.book]).filter(Boolean))];
+    if (!ids.length) return {};
+    const keys = await select("answer_keys", `textbook_id=in.(${ids.join(",")})&select=textbook_id,unit_code,path`);
+    const out = {};
+    for (const p of pairs) {
+      const k = keys.find((x) => x.textbook_id === idOf[p.book] && x.unit_code === p.code);
+      if (k) out[p.subject] = k;
+    }
+    return out;
+  } catch {
+    return {};
+  }
 }
 
 export default async function handler(req, res) {
@@ -72,6 +111,18 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, task: updated[0] });
     }
 
+    // ── 📖 답지 열기 — ★ 학원 와이파이에서만, ★ 내 **지금 진도** 유닛 것만 ──
+    //   어떤 유닛인지는 화면이 보낸 값을 믿지 않고 서버가 진도에서 직접 찾습니다
+    //   (그래야 다음 유닛 답지를 미리 열어보지 못합니다).
+    if (action === "answer") {
+      if (!onAcademyWifi(req)) return res.status(403).json({ error: wifiBlockedMessage() });
+      const subject = String(req.body?.subject || "");
+      const base = await currentBase(stu, now.date);
+      const k = (await answersFor(base, stu))[subject];
+      if (!k) return res.status(404).json({ error: "지금 진도의 답지가 아직 없어요." });
+      return res.status(200).json({ url: await signDownload(k.path) });
+    }
+
     // ── 홈: 오늘 과제 + 내 진도 + 최근 리포트 + 월말평가서 ──
     if (action === "home") {
       const date = String(req.body?.date || now.date);
@@ -89,10 +140,12 @@ export default async function handler(req, res) {
 
       // 진도는 오늘 행이 있으면 오늘, 없으면 가장 최근 수업 기준
       const base = today[0] || recent[0] || null;
+      const 답지 = await answersFor(base, stu);
       const progress = Object.entries(base?.progress || {}).map(([subject, u]) => ({
         subject,
         book: (base?.books || {})[subject] || (stu.books || {})[subject] || "",
         unit: unitLabel(u),
+        has_answer: Boolean(답지[subject]),   // 📖 지금 진도에 답지가 올라가 있나 (파일 위치는 안 보냄)
       }));
 
       return res.status(200).json({
@@ -104,6 +157,7 @@ export default async function handler(req, res) {
           overdue: t.date < date && !t.done, // 지난 과제인데 아직 안 한 것
         })),
         progress,
+        on_wifi: onAcademyWifi(req),   // 학원 와이파이인가 — 답지 버튼 안내용
         // 학생이 보는 리포트에는 '지적사항(note)'을 넣지 않는다 — 내부 기록이다.
         recent: recent.map((r) => ({
           date: r.date, lateness: r.lateness, attitude: r.attitude, homework: r.homework,

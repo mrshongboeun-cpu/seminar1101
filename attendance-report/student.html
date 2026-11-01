@@ -52,6 +52,11 @@
     .prog .s { background: var(--green); color: #fff; font-size: 11px; font-weight: 600; border-radius: 6px; padding: 3px 8px; flex-shrink: 0; }
     .prog .b { font-size: 13px; font-weight: 500; }
     .prog .u { font-size: 11px; color: #888; margin-top: 2px; }
+    /* 📖 답지 버튼 — 학원 와이파이에서만 열림 */
+    .prog .ans { margin-left: auto; flex-shrink: 0; border: 1px solid var(--green); background: #fff; color: var(--green);
+                 font: inherit; font-size: 12px; font-weight: 600; border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+    .prog .ans.off { border-color: #ddd; color: #aaa; }
+    .wifi-note { font-size: 11px; color: #999; margin: 2px 2px 0; }
 
     /* 최근 기록 */
     table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -182,6 +187,7 @@
     var d = await api('home');
     me = d.me;
     renderTasks(d.tasks);
+    ON_WIFI = Boolean(d.on_wifi);
     renderProgress(d.progress);
     renderRecent(d.recent);
     renderReports(d.reports);
@@ -230,13 +236,34 @@
     catch (e) { toast(e.message); }
   }
 
+  var ON_WIFI = false;
   function renderProgress(list) {
+    var any = list.some(function (p) { return p.has_answer; });
     $('prog').innerHTML = list.length ? list.map(function (p) {
+      // 📖 답지 — 지금 진도 유닛의 답지가 올라가 있을 때만 버튼이 보입니다
+      var btn = p.has_answer
+        ? '<button class="ans' + (ON_WIFI ? '' : ' off') + '" data-ans="' + esc(p.subject) + '">📖 답지</button>' : '';
       return '<div class="prog"><div class="s">' + esc(p.subject) + '</div><div>'
         + '<div class="b">' + esc(p.book || '교재 미지정') + '</div>'
-        + '<div class="u">' + esc(p.unit || '진도 없음') + '</div></div></div>';
-    }).join('') : '<div class="empty">아직 진도 기록이 없어요.</div>';
+        + '<div class="u">' + esc(p.unit || '진도 없음') + '</div></div>' + btn + '</div>';
+    }).join('') + (any ? '<div class="wifi-note">📶 답지는 <b>학원 와이파이</b>에서만 열려요' + (ON_WIFI ? ' — 지금 학원 와이파이예요 ✅' : '') + '</div>' : '')
+      : '<div class="empty">아직 진도 기록이 없어요.</div>';
   }
+
+  // 📖 답지 열기 — 서버가 학원 와이파이인지 보고, 2분짜리 열람 링크를 줍니다.
+  //   아이폰 사파리는 「기다렸다가 새 창 열기」 를 막아서, 창을 **먼저** 열어두고 주소를 넣습니다.
+  document.addEventListener('click', async function (e) {
+    var b = e.target.closest && e.target.closest('[data-ans]');
+    if (!b) return;
+    var w = window.open('', '_blank');
+    try {
+      var d = await api('answer', { subject: b.dataset.ans });
+      if (w) w.location.href = d.url; else location.href = d.url;
+    } catch (err) {
+      if (w) w.close();
+      alert(err.message);
+    }
+  });
 
   // 날짜를 MM-DD 로. 서버가 '2026-10-27' 로 주든 ISO 로 주든 둘 다 되게
   //   (학생카드 student_card.html 의 md() 와 같은 방식)

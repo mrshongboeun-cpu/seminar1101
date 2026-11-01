@@ -7,6 +7,7 @@
 -- ⚠️ 실제 학생 이름·전화번호는 넣지 마세요. 아래 샘플은 전부 가짜입니다.
 -- ============================================================
 
+drop table if exists answer_keys cascade;
 drop table if exists tasks cascade;
 drop table if exists monthly_reports cascade;
 drop table if exists monthly_comments cascade;
@@ -121,6 +122,19 @@ create table tasks (
   created_at timestamptz not null default now()
 );
 
+-- ── 답지DB (교재 유닛별 답지 파일 — 학원 와이파이에서만 열림) ──
+-- 파일 자체는 Supabase Storage 의 비공개 보관함 'answers' 에 있고, 여기엔 위치만 적습니다.
+create table answer_keys (
+  id           uuid primary key default gen_random_uuid(),
+  textbook_id  uuid not null references textbooks(id) on delete cascade,
+  unit_code    text not null,                -- 교재 목차의 유닛코드 (예: UNIT 05)
+  path         text not null,                -- 보관함 안의 파일 위치 (앱이 정함)
+  file_name    text,                         -- 올린 파일 원래 이름
+  content_type text,
+  created_at   timestamptz not null default now(),
+  unique (textbook_id, unit_code)
+);
+
 create index on daily_records (date);
 create index on daily_records (student_id, date);
 create index on monthly_reports (month);
@@ -134,6 +148,16 @@ alter table monthly_comments enable row level security;
 alter table monthly_reports  enable row level security;
 alter table textbooks        enable row level security;
 alter table tasks            enable row level security;
+alter table answer_keys      enable row level security;
+
+-- 답지 파일 보관함 (Supabase 에서만 — 일반 PostgreSQL 에는 storage 가 없어서 건너뜀)
+do $$
+begin
+  if exists (select 1 from pg_namespace where nspname = 'storage') then
+    insert into storage.buckets (id, name, public) values ('answers', 'answers', false)
+    on conflict (id) do nothing;
+  end if;
+end $$;
 
 -- ============================================================
 -- ★ service_role 권한 부여 (이거 빠지면 세미나 당일 다 막힙니다)

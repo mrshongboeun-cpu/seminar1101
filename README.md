@@ -51,6 +51,7 @@
 | `ACADEMY_NAME` / `BRAND_COLOR` | 학원 이름 · 대표 색 | 선택 |
 | `SOLAPI_*` / `TPL_*` | 알림톡 6종 — 등원·하원·미등원·데일리·월말·**재시 안내** | 선택 |
 | `NOTION_*` | 노션 이관 | 선택 |
+| `ACADEMY_IPS` | 학원 와이파이 공인 IP (`/answers.html` 맨 위에 나옴) | 📖 답지 |
 
 4. `https://내프로젝트.vercel.app/` 접속 → 홈에서 각 화면 확인 ✅
 
@@ -82,6 +83,7 @@
 - `sql/migrate_retest.sql` — 재시 안내 칸(`retest_sent`) 추가
 - `sql/migrate_auto_tasks.sql` — 유닛 과제 자동 배정 칸(`tasks.auto`) 추가
 - `sql/migrate_writing_test.sql` — ✏️ 영작 테스트 칸(`writing_test`·`writing_score`) 추가
+- `sql/migrate_answer_keys.sql` — 📖 답지 표(`answer_keys`) + 비공개 파일 보관함(`answers`) 추가
 
 세 마이그레이션은 **여러 번 돌려도 안전**합니다. 다 돌렸는지는 아래 한 줄로 확인하세요 —
 `SQL Editor` 에 붙여넣고 Run 하면 **전부 1** 이 나와야 합니다.
