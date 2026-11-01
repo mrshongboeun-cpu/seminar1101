@@ -179,7 +179,7 @@ function isFail(v){ return /불통과|미통과|재시/.test(String(v||"")); }
 function needsRetest(rec){
   if (!rec || rec.retest_sent === "전송") return false;
   if (typeof rec.needs_retest === "boolean") return rec.needs_retest;
-  return rec.retest_sent === "미전송" || isFail(rec.voca_test);
+  return rec.retest_sent === "미전송" || isFail(rec.voca_test) || isFail(rec.writing_test);
 }
 function resTxt(res, score){
   if (!res && !score) return "";
@@ -212,6 +212,7 @@ function histHtml(r, i){
     return `<tr><td class="d">${esc(md(h.date))} ${esc(wdOf(h.date))}${att}</td>`
       + subs.map(sub => cell(h, sub, idx)).join("")
       + `<td>${resTxt(h.voca_test, h.voca_score)}</td>`
+      + `<td>${resTxt(h.writing_test, h.writing_score)}</td>`
       + `<td>${esc(h.attitude || "-")}</td><td>${esc(h.homework || "-")}</td>`
       + `<td style="color:#6b7280">${esc(h.note || "")}</td></tr>`;
   }).join("");
@@ -220,7 +221,7 @@ function histHtml(r, i){
     : "";
   return `<div class="hist"><table><thead><tr><th>📜 최근 수업</th>`
     + subs.map(x => `<th>${esc(x)}</th>`).join("")
-    + `<th>단어 TEST</th><th>태도</th><th>과제</th><th>지적</th></tr></thead><tbody>${rows}</tbody></table>${more}</div>`;
+    + `<th>단어 TEST</th><th>영작 TEST</th><th>태도</th><th>과제</th><th>지적</th></tr></thead><tbody>${rows}</tbody></table>${more}</div>`;
 }
 
 function esc(s){ return (s ?? "").toString().replace(/[&<>"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
@@ -393,6 +394,9 @@ function cardHtml(i){
     <div class="grid">
       <div class="fld"><label>단어테스트 점수</label><input class="score" data-i="${i}" data-field="voca_score" value="${esc(rec.voca_score||"")}" placeholder="예: 18/20">
         <div class="rhint${/재시 안내 대상/.test(rec.retest_hint||"") ? " hit" : ""}" id="rhint-${i}">${esc(rec.retest_hint||"")}</div></div>
+      <div class="fld"><label>✏️ 영작테스트</label>${segHtml(i,"writing_test",[{v:"통과",t:"통과"},{v:"불통과",t:"불통과"},{v:"",t:"없음"}],rec.writing_test||"")}</div>
+      <div class="fld"><label>✏️ 영작테스트 점수</label><input class="score" data-i="${i}" data-field="writing_score" value="${esc(rec.writing_score||"")}" placeholder="예: 9/10">
+        <div class="rhint${/재시 안내 대상/.test(rec.writing_hint||"") ? " hit" : ""}" id="whint-${i}">${esc(rec.writing_hint||"")}</div></div>
     </div>
     <div class="note parent"><label>추가사항 (학부모 카톡에 나가는 내용)</label><textarea data-i="${i}" data-field="parent_note">${esc(rec.parent_note||"")}</textarea></div>
     <div class="note"><label>지적사항 (내부 기록 — 학부모에게 안 나감)</label><textarea data-i="${i}" data-field="note">${esc(rec.note||"")}</textarea></div>
@@ -461,6 +465,8 @@ function collect(i){
     lateness: seg("lateness"), attitude: seg("attitude"), homework: seg("homework"),
     voca_test: seg("voca_test") || null,
     voca_score: card.querySelector('[data-field="voca_score"]').value.trim() || null,
+    writing_test: seg("writing_test") || null,
+    writing_score: card.querySelector('[data-field="writing_score"]').value.trim() || null,
     parent_note: card.querySelector('[data-field="parent_note"]').value,
     note: card.querySelector('[data-field="note"]').value,
     progress,
@@ -471,12 +477,14 @@ async function saveRow(i){
   const m = $("#save-"+i);
   try {
     const d = await api({ action:"save-record", student_id:r.student_id, date:$("#date").value, fields });
-    r.record = { ...r.record, ...d.record, needs_retest: d.needs_retest, retest_hint: d.retest_hint };
+    r.record = { ...r.record, ...d.record, needs_retest: d.needs_retest, retest_hint: d.retest_hint, writing_hint: d.writing_hint };
     // 점수만 적어도 재시 대상이 되므로, 저장될 때마다 점수칸 안내와
     // 「🔁 재시 안내 (n)」 숫자를 서버 판정으로 다시 그립니다.
     // (예전에는 여기서 다시 안 그려서, 불통과를 눌러도 버튼 숫자가 새로고침 전까지 옛 값이었습니다)
     const h = $("#rhint-"+i);
     if (h){ h.textContent = d.retest_hint || ""; h.className = "rhint" + (/재시 안내 대상/.test(d.retest_hint||"") ? " hit" : ""); }
+    const wh = $("#whint-"+i);
+    if (wh){ wh.textContent = d.writing_hint || ""; wh.className = "rhint" + (/재시 안내 대상/.test(d.writing_hint||"") ? " hit" : ""); }
     const p = $("#rpill-"+i);
     if (p) p.innerHTML = needsRetest(r.record) ? '<span class="pill late">🔁 재시 안내 대기</span>' : "";
     renderRetestBtn();
@@ -555,7 +563,8 @@ $("#doSend").onclick = async () => {
 };
 
 // ── 🔁 재시 안내 발송 (미리보기 → 선택 → 발송) ──
-// 데일리 리포트 카톡과 **다른 템플릿**(TPL_RETEST)으로 나갑니다 — 단어를 못 넘긴 학생만.
+// 데일리 리포트 카톡과 **다른 템플릿**(TPL_RETEST)으로 나갑니다 — 단어·영작 중 하나라도 못 넘긴 학생만.
+// 한 카톡에 단어·영작 결과를 같이 담습니다.
 // 대상 판정은 서버(lib/retest.js)가 합니다 — 「불통과」 버튼 또는 점수 기준 미달.
 let RPREVIEW = [];
 $("#retest").onclick = async () => {
@@ -564,15 +573,16 @@ $("#retest").onclick = async () => {
     const d = await api({ action:"send-retest", date:$("#date").value, dryRun:true, teacher:TEACHER||undefined });
     RPREVIEW = d.results || [];
     if (!RPREVIEW.length){ alert("재시 안내를 보낼 학생이 없어요."); load(); return; }
-    $("#rSub").textContent = `${d.date} — 단어테스트 못 넘긴 ${RPREVIEW.length}명`
-      + (d.pass ? ` (「불통과」 누른 학생 + 점수 ${d.pass}% 미달)` : "")
+    $("#rSub").textContent = `${d.date} — 단어·영작테스트 못 넘긴 ${RPREVIEW.length}명`
+      + (d.pass ? ` (「불통과」 누른 학생 + 점수 미달: 단어 ${d.pass}%` + (d.writing_pass ? ` · 영작 ${d.writing_pass}%` : "") + `)` : "")
       + (d.solapi ? "" : " · ⚠️ TPL_RETEST(재시 안내 템플릿) 미설정 상태라 실제 발송은 안 됩니다");
     $("#rList").innerHTML = RPREVIEW.map((p, idx) => {
       const dis = !p.ok && p.reason === "연락처 없음";
       return `<label class="srow${dis?" off":""}">
         <input type="checkbox" data-idx="${idx}" ${dis?"disabled":(p.already?"":"checked")}>
         <div class="info"><b>${esc(p.name)}</b> ${p.already?'<span class="pill sent">이미 전송</span>':""} ${dis?'<span class="pill late">연락처 없음</span>':""}
-          <div class="l2">단어 ${esc(p.book)} · ${esc(p.unit)} · 점수 ${esc(p.score)}</div>
+          <div class="l2">📘 단어 ${esc(p.book)} · ${esc(p.unit)} · 점수 ${esc(p.score)}${p.voca_result ? " · " + esc(p.voca_result) : ""}</div>
+          ${p.writing_result !== undefined ? `<div class="l2">✏️ 영작 ${esc(p.writing_book)} · ${esc(p.writing_unit)} · 점수 ${esc(p.writing_score)} · ${esc(p.writing_result)}</div>` : ""}
           <div class="l2">${p.phone?("학부모 "+esc(p.phone)):'<span style="color:var(--absent)">학부모 연락처 없음</span>'}</div>
         </div></label>`;
     }).join("");

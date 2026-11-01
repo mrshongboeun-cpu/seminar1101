@@ -45,6 +45,8 @@ create table daily_records (
   homework   text not null default '상',    -- 과제: 100%완료 / 상 / 중 / 하
   voca_test  text,                         -- 단어테스트_결과: 통과 / 불통과
   voca_score text,                         -- 단어테스트 점수 (예: 18/20)
+  writing_test  text,                      -- ✏️ 영작테스트_결과: 통과 / 불통과
+  writing_score text,                      -- ✏️ 영작테스트 점수 (예: 9/10)
   -- 과목별 진도 {"문법":{"code":"Unit 5","title":"현재완료"}, ...}  (유닛 코드 + 실제 제목)
   progress   jsonb not null default '{}',
   -- 그날의 교재 스냅샷(학생DB에서 복사) {"문법":"교재명",...} — 교재 전환 감지용
@@ -54,7 +56,7 @@ create table daily_records (
   kakao_sent  text not null default '미전송', -- 등원 알림톡 상태: 미전송/전송/실패
   report_sent text not null default '미전송', -- 데일리 리포트 카톡 상태
   -- 재시 안내 카톡 상태 (빈값=보낼 일 없음 / 미전송=발송 대기 / 전송=보냄)
-  -- 단어테스트를 '불통과'로 저장하면 서버가 '미전송'으로 자동 올립니다 (api/attendance.js)
+  -- 단어테스트·영작테스트를 '불통과'로 저장하면 서버가 '미전송'으로 자동 올립니다 (api/attendance.js)
   retest_sent text,
   created_at timestamptz not null default now(),
   unique (student_id, date)
