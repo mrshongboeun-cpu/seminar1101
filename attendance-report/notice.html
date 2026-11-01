@@ -1,0 +1,160 @@
+<!doctype html>
+<!--
+  학부모 공지 — 학원앱 안내 페이지
+  주소: /notice.html  (학부모 단톡방·문자로 이 주소만 보내시면 됩니다)
+  학원 이름·대표 색은 config.js 에서 자동으로 들어갑니다.
+  문구를 바꾸고 싶으면 아래 본문을 고치면 됩니다 (★ 표시가 자주 바꾸는 곳).
+-->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>학부모 공지</title>
+<meta name="description" content="학원앱 이용 안내 — 학생앱 · 알림톡 · 데일리 리포트 · 월말평가서">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📢</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{ --green:#1f7a70; --ink:#1b2a27; --muted:#677872; --line:#e3eae7; --bg:#f6f8f7; --card:#fff;
+         --soft:rgba(31,122,112,.08); --warn:#b4472e; --warnbg:#fff6f3; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:'Noto Sans KR',-apple-system,BlinkMacSystemFont,sans-serif;
+       line-height:1.75;font-size:15.5px;word-break:keep-all}
+  .wrap{max-width:640px;margin:0 auto;padding:0 16px 48px}
+
+  /* 맨 위 */
+  .hero{padding:44px 0 28px;text-align:center}
+  .badge{display:inline-block;font-size:13px;font-weight:700;color:var(--green);background:var(--soft);
+         padding:5px 13px;border-radius:999px;margin-bottom:14px}
+  .academy{font-size:34px;font-weight:900;color:var(--green);margin:0;line-height:1.3}
+  .hero h1{font-size:20px;font-weight:700;margin:8px 0 0}
+  .hero p{color:var(--muted);margin:14px 0 0;font-size:15px}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px 22px;margin-top:16px}
+  .card h2{font-size:18px;font-weight:900;margin:0 0 4px}
+  .card .lead{color:var(--muted);font-size:14px;margin:0 0 14px}
+
+  /* 학생앱 바로가기 */
+  .app{text-align:center}
+  .go{display:block;background:var(--green);color:#fff;text-decoration:none;font-weight:900;font-size:18px;
+      padding:16px;border-radius:12px;margin:14px 0 6px}
+  .url{font-size:12.5px;color:var(--muted);word-break:break-all}
+  .copy{margin-top:8px;background:none;border:1px solid var(--line);border-radius:8px;padding:7px 14px;
+        font:inherit;font-size:13px;color:var(--ink);cursor:pointer}
+  #qr{display:flex;justify-content:center;margin:18px 0 4px}
+  #qr svg{width:160px;height:160px}
+  .qrcap{font-size:12.5px;color:var(--muted)}
+
+  /* 로그인 방법 */
+  ol.steps{list-style:none;counter-reset:s;margin:0;padding:0}
+  ol.steps li{counter-increment:s;position:relative;padding:11px 0 11px 40px;border-bottom:1px solid var(--line)}
+  ol.steps li:last-child{border-bottom:none}
+  ol.steps li::before{content:counter(s);position:absolute;left:0;top:12px;width:27px;height:27px;border-radius:8px;
+                      background:var(--soft);color:var(--green);font-weight:900;font-size:13px;
+                      display:flex;align-items:center;justify-content:center}
+  .tip{font-size:13.5px;color:var(--muted);margin-top:12px}
+
+  /* 받으시는 알림 */
+  .feat{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .f{background:var(--bg);border-radius:12px;padding:14px}
+  .f .e{font-size:22px}
+  .f b{display:block;margin-top:4px;font-size:15px}
+  .f span{display:block;font-size:13px;color:var(--muted);line-height:1.6;margin-top:2px}
+  @media (max-width:440px){ .feat{grid-template-columns:1fr} .academy{font-size:28px} }
+
+  /* 부탁 */
+  ul.ask{margin:0;padding-left:20px}
+  ul.ask li{margin:6px 0}
+  .warn{background:var(--warnbg);border-radius:12px;padding:13px 15px;font-size:14px;margin-top:14px}
+  .warn b{color:var(--warn)}
+
+  .foot{text-align:center;color:var(--muted);font-size:13px;margin-top:28px}
+</style>
+<script src="/config.js"></script>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="badge">📢 학부모님께 드리는 안내</div>
+    <div class="academy" data-academy>학원</div>
+    <h1>학원앱을 시작합니다</h1>
+    <p>아이의 등·하원, 오늘 배운 내용, 과제와 테스트 결과를<br>
+       이제 <b>휴대폰으로 바로</b> 확인하실 수 있습니다.</p>
+  </header>
+
+  <!-- 학생앱 바로가기 -->
+  <section class="card app">
+    <h2>📱 학생앱 바로가기</h2>
+    <p class="lead">아래 버튼을 누르거나 QR 코드를 찍으면 열립니다</p>
+    <a class="go" id="appLink" href="https://seminar1101-attendance-report.vercel.app/student.html">학생앱 열기 →</a>
+    <div class="url" id="appUrl">https://seminar1101-attendance-report.vercel.app/student.html</div>
+    <button class="copy" id="copyBtn" type="button">🔗 주소 복사</button>
+    <!-- QR = 위 학생앱 주소 (주소가 바뀌면 QR 도 새로 만들어야 합니다) -->
+    <div id="qr"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 37 37" shape-rendering="crispEdges" role="img" aria-label="학생앱 QR 코드"><rect width="37" height="37" fill="#fff"/><path d="M2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM8 2h1v1h-1zM12 2h1v1h-1zM16 2h1v1h-1zM19 2h1v1h-1zM24 2h1v1h-1zM28 2h1v1h-1zM29 2h1v1h-1zM30 2h1v1h-1zM31 2h1v1h-1zM32 2h1v1h-1zM33 2h1v1h-1zM34 2h1v1h-1zM2 3h1v1h-1zM8 3h1v1h-1zM10 3h1v1h-1zM13 3h1v1h-1zM14 3h1v1h-1zM16 3h1v1h-1zM18 3h1v1h-1zM22 3h1v1h-1zM23 3h1v1h-1zM24 3h1v1h-1zM26 3h1v1h-1zM28 3h1v1h-1zM34 3h1v1h-1zM2 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM8 4h1v1h-1zM10 4h1v1h-1zM11 4h1v1h-1zM12 4h1v1h-1zM14 4h1v1h-1zM20 4h1v1h-1zM23 4h1v1h-1zM25 4h1v1h-1zM28 4h1v1h-1zM30 4h1v1h-1zM31 4h1v1h-1zM32 4h1v1h-1zM34 4h1v1h-1zM2 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM8 5h1v1h-1zM10 5h1v1h-1zM11 5h1v1h-1zM13 5h1v1h-1zM16 5h1v1h-1zM18 5h1v1h-1zM19 5h1v1h-1zM22 5h1v1h-1zM23 5h1v1h-1zM25 5h1v1h-1zM26 5h1v1h-1zM28 5h1v1h-1zM30 5h1v1h-1zM31 5h1v1h-1zM32 5h1v1h-1zM34 5h1v1h-1zM2 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM8 6h1v1h-1zM11 6h1v1h-1zM12 6h1v1h-1zM14 6h1v1h-1zM18 6h1v1h-1zM20 6h1v1h-1zM21 6h1v1h-1zM22 6h1v1h-1zM23 6h1v1h-1zM25 6h1v1h-1zM26 6h1v1h-1zM28 6h1v1h-1zM30 6h1v1h-1zM31 6h1v1h-1zM32 6h1v1h-1zM34 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM11 7h1v1h-1zM13 7h1v1h-1zM16 7h1v1h-1zM18 7h1v1h-1zM22 7h1v1h-1zM26 7h1v1h-1zM28 7h1v1h-1zM34 7h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM26 8h1v1h-1zM28 8h1v1h-1zM29 8h1v1h-1zM30 8h1v1h-1zM31 8h1v1h-1zM32 8h1v1h-1zM33 8h1v1h-1zM34 8h1v1h-1zM10 9h1v1h-1zM11 9h1v1h-1zM13 9h1v1h-1zM14 9h1v1h-1zM16 9h1v1h-1zM18 9h1v1h-1zM20 9h1v1h-1zM22 9h1v1h-1zM24 9h1v1h-1zM2 10h1v1h-1zM8 10h1v1h-1zM10 10h1v1h-1zM11 10h1v1h-1zM15 10h1v1h-1zM19 10h1v1h-1zM24 10h1v1h-1zM25 10h1v1h-1zM26 10h1v1h-1zM27 10h1v1h-1zM28 10h1v1h-1zM31 10h1v1h-1zM32 10h1v1h-1zM33 10h1v1h-1zM2 11h1v1h-1zM4 11h1v1h-1zM6 11h1v1h-1zM12 11h1v1h-1zM13 11h1v1h-1zM15 11h1v1h-1zM16 11h1v1h-1zM17 11h1v1h-1zM21 11h1v1h-1zM25 11h1v1h-1zM30 11h1v1h-1zM31 11h1v1h-1zM32 11h1v1h-1zM33 11h1v1h-1zM5 12h1v1h-1zM8 12h1v1h-1zM9 12h1v1h-1zM10 12h1v1h-1zM11 12h1v1h-1zM14 12h1v1h-1zM15 12h1v1h-1zM16 12h1v1h-1zM17 12h1v1h-1zM22 12h1v1h-1zM23 12h1v1h-1zM27 12h1v1h-1zM30 12h1v1h-1zM32 12h1v1h-1zM33 12h1v1h-1zM2 13h1v1h-1zM3 13h1v1h-1zM4 13h1v1h-1zM6 13h1v1h-1zM11 13h1v1h-1zM15 13h1v1h-1zM17 13h1v1h-1zM18 13h1v1h-1zM22 13h1v1h-1zM24 13h1v1h-1zM26 13h1v1h-1zM28 13h1v1h-1zM29 13h1v1h-1zM30 13h1v1h-1zM31 13h1v1h-1zM32 13h1v1h-1zM33 13h1v1h-1zM2 14h1v1h-1zM3 14h1v1h-1zM4 14h1v1h-1zM6 14h1v1h-1zM8 14h1v1h-1zM9 14h1v1h-1zM10 14h1v1h-1zM11 14h1v1h-1zM12 14h1v1h-1zM14 14h1v1h-1zM15 14h1v1h-1zM18 14h1v1h-1zM26 14h1v1h-1zM28 14h1v1h-1zM34 14h1v1h-1zM3 15h1v1h-1zM5 15h1v1h-1zM6 15h1v1h-1zM7 15h1v1h-1zM9 15h1v1h-1zM10 15h1v1h-1zM11 15h1v1h-1zM12 15h1v1h-1zM13 15h1v1h-1zM14 15h1v1h-1zM17 15h1v1h-1zM18 15h1v1h-1zM20 15h1v1h-1zM21 15h1v1h-1zM22 15h1v1h-1zM24 15h1v1h-1zM25 15h1v1h-1zM28 15h1v1h-1zM29 15h1v1h-1zM32 15h1v1h-1zM33 15h1v1h-1zM34 15h1v1h-1zM2 16h1v1h-1zM3 16h1v1h-1zM4 16h1v1h-1zM7 16h1v1h-1zM8 16h1v1h-1zM11 16h1v1h-1zM16 16h1v1h-1zM17 16h1v1h-1zM27 16h1v1h-1zM28 16h1v1h-1zM29 16h1v1h-1zM30 16h1v1h-1zM32 16h1v1h-1zM33 16h1v1h-1zM2 17h1v1h-1zM3 17h1v1h-1zM5 17h1v1h-1zM6 17h1v1h-1zM7 17h1v1h-1zM11 17h1v1h-1zM12 17h1v1h-1zM13 17h1v1h-1zM14 17h1v1h-1zM16 17h1v1h-1zM20 17h1v1h-1zM24 17h1v1h-1zM27 17h1v1h-1zM29 17h1v1h-1zM31 17h1v1h-1zM32 17h1v1h-1zM34 17h1v1h-1zM2 18h1v1h-1zM6 18h1v1h-1zM7 18h1v1h-1zM8 18h1v1h-1zM9 18h1v1h-1zM11 18h1v1h-1zM13 18h1v1h-1zM14 18h1v1h-1zM15 18h1v1h-1zM16 18h1v1h-1zM17 18h1v1h-1zM19 18h1v1h-1zM26 18h1v1h-1zM27 18h1v1h-1zM29 18h1v1h-1zM30 18h1v1h-1zM34 18h1v1h-1zM3 19h1v1h-1zM4 19h1v1h-1zM6 19h1v1h-1zM9 19h1v1h-1zM10 19h1v1h-1zM16 19h1v1h-1zM17 19h1v1h-1zM18 19h1v1h-1zM19 19h1v1h-1zM20 19h1v1h-1zM21 19h1v1h-1zM24 19h1v1h-1zM25 19h1v1h-1zM27 19h1v1h-1zM28 19h1v1h-1zM31 19h1v1h-1zM32 19h1v1h-1zM34 19h1v1h-1zM2 20h1v1h-1zM4 20h1v1h-1zM5 20h1v1h-1zM6 20h1v1h-1zM8 20h1v1h-1zM10 20h1v1h-1zM12 20h1v1h-1zM13 20h1v1h-1zM14 20h1v1h-1zM16 20h1v1h-1zM17 20h1v1h-1zM21 20h1v1h-1zM23 20h1v1h-1zM24 20h1v1h-1zM25 20h1v1h-1zM28 20h1v1h-1zM29 20h1v1h-1zM31 20h1v1h-1zM32 20h1v1h-1zM34 20h1v1h-1zM4 21h1v1h-1zM9 21h1v1h-1zM11 21h1v1h-1zM12 21h1v1h-1zM13 21h1v1h-1zM14 21h1v1h-1zM15 21h1v1h-1zM16 21h1v1h-1zM20 21h1v1h-1zM27 21h1v1h-1zM30 21h1v1h-1zM31 21h1v1h-1zM32 21h1v1h-1zM34 21h1v1h-1zM4 22h1v1h-1zM8 22h1v1h-1zM10 22h1v1h-1zM12 22h1v1h-1zM15 22h1v1h-1zM16 22h1v1h-1zM17 22h1v1h-1zM18 22h1v1h-1zM19 22h1v1h-1zM22 22h1v1h-1zM24 22h1v1h-1zM25 22h1v1h-1zM26 22h1v1h-1zM27 22h1v1h-1zM29 22h1v1h-1zM30 22h1v1h-1zM31 22h1v1h-1zM2 23h1v1h-1zM3 23h1v1h-1zM5 23h1v1h-1zM6 23h1v1h-1zM9 23h1v1h-1zM10 23h1v1h-1zM11 23h1v1h-1zM12 23h1v1h-1zM13 23h1v1h-1zM17 23h1v1h-1zM21 23h1v1h-1zM25 23h1v1h-1zM27 23h1v1h-1zM30 23h1v1h-1zM31 23h1v1h-1zM2 24h1v1h-1zM7 24h1v1h-1zM8 24h1v1h-1zM9 24h1v1h-1zM11 24h1v1h-1zM15 24h1v1h-1zM16 24h1v1h-1zM17 24h1v1h-1zM22 24h1v1h-1zM23 24h1v1h-1zM29 24h1v1h-1zM31 24h1v1h-1zM33 24h1v1h-1zM2 25h1v1h-1zM6 25h1v1h-1zM9 25h1v1h-1zM11 25h1v1h-1zM14 25h1v1h-1zM15 25h1v1h-1zM21 25h1v1h-1zM24 25h1v1h-1zM25 25h1v1h-1zM26 25h1v1h-1zM27 25h1v1h-1zM28 25h1v1h-1zM29 25h1v1h-1zM31 25h1v1h-1zM32 25h1v1h-1zM33 25h1v1h-1zM2 26h1v1h-1zM3 26h1v1h-1zM5 26h1v1h-1zM7 26h1v1h-1zM8 26h1v1h-1zM9 26h1v1h-1zM10 26h1v1h-1zM16 26h1v1h-1zM18 26h1v1h-1zM21 26h1v1h-1zM24 26h1v1h-1zM25 26h1v1h-1zM26 26h1v1h-1zM27 26h1v1h-1zM28 26h1v1h-1zM29 26h1v1h-1zM30 26h1v1h-1zM10 27h1v1h-1zM11 27h1v1h-1zM12 27h1v1h-1zM14 27h1v1h-1zM15 27h1v1h-1zM17 27h1v1h-1zM18 27h1v1h-1zM20 27h1v1h-1zM21 27h1v1h-1zM24 27h1v1h-1zM26 27h1v1h-1zM30 27h1v1h-1zM32 27h1v1h-1zM33 27h1v1h-1zM34 27h1v1h-1zM2 28h1v1h-1zM3 28h1v1h-1zM4 28h1v1h-1zM5 28h1v1h-1zM6 28h1v1h-1zM7 28h1v1h-1zM8 28h1v1h-1zM13 28h1v1h-1zM15 28h1v1h-1zM16 28h1v1h-1zM17 28h1v1h-1zM23 28h1v1h-1zM25 28h1v1h-1zM26 28h1v1h-1zM28 28h1v1h-1zM30 28h1v1h-1zM32 28h1v1h-1zM33 28h1v1h-1zM2 29h1v1h-1zM8 29h1v1h-1zM11 29h1v1h-1zM12 29h1v1h-1zM13 29h1v1h-1zM15 29h1v1h-1zM20 29h1v1h-1zM22 29h1v1h-1zM24 29h1v1h-1zM25 29h1v1h-1zM26 29h1v1h-1zM30 29h1v1h-1zM31 29h1v1h-1zM32 29h1v1h-1zM33 29h1v1h-1zM34 29h1v1h-1zM2 30h1v1h-1zM4 30h1v1h-1zM5 30h1v1h-1zM6 30h1v1h-1zM8 30h1v1h-1zM11 30h1v1h-1zM14 30h1v1h-1zM17 30h1v1h-1zM19 30h1v1h-1zM20 30h1v1h-1zM22 30h1v1h-1zM26 30h1v1h-1zM27 30h1v1h-1zM28 30h1v1h-1zM29 30h1v1h-1zM30 30h1v1h-1zM31 30h1v1h-1zM33 30h1v1h-1zM34 30h1v1h-1zM2 31h1v1h-1zM4 31h1v1h-1zM5 31h1v1h-1zM6 31h1v1h-1zM8 31h1v1h-1zM11 31h1v1h-1zM13 31h1v1h-1zM15 31h1v1h-1zM17 31h1v1h-1zM18 31h1v1h-1zM19 31h1v1h-1zM20 31h1v1h-1zM21 31h1v1h-1zM22 31h1v1h-1zM25 31h1v1h-1zM26 31h1v1h-1zM27 31h1v1h-1zM29 31h1v1h-1zM30 31h1v1h-1zM32 31h1v1h-1zM33 31h1v1h-1zM34 31h1v1h-1zM2 32h1v1h-1zM4 32h1v1h-1zM5 32h1v1h-1zM6 32h1v1h-1zM8 32h1v1h-1zM11 32h1v1h-1zM12 32h1v1h-1zM14 32h1v1h-1zM16 32h1v1h-1zM17 32h1v1h-1zM18 32h1v1h-1zM21 32h1v1h-1zM23 32h1v1h-1zM24 32h1v1h-1zM26 32h1v1h-1zM27 32h1v1h-1zM29 32h1v1h-1zM30 32h1v1h-1zM31 32h1v1h-1zM33 32h1v1h-1zM34 32h1v1h-1zM2 33h1v1h-1zM8 33h1v1h-1zM11 33h1v1h-1zM12 33h1v1h-1zM16 33h1v1h-1zM17 33h1v1h-1zM18 33h1v1h-1zM20 33h1v1h-1zM21 33h1v1h-1zM22 33h1v1h-1zM24 33h1v1h-1zM29 33h1v1h-1zM30 33h1v1h-1zM31 33h1v1h-1zM32 33h1v1h-1zM2 34h1v1h-1zM3 34h1v1h-1zM4 34h1v1h-1zM5 34h1v1h-1zM6 34h1v1h-1zM7 34h1v1h-1zM8 34h1v1h-1zM10 34h1v1h-1zM11 34h1v1h-1zM12 34h1v1h-1zM13 34h1v1h-1zM14 34h1v1h-1zM15 34h1v1h-1zM16 34h1v1h-1zM19 34h1v1h-1zM21 34h1v1h-1zM22 34h1v1h-1zM25 34h1v1h-1zM26 34h1v1h-1zM28 34h1v1h-1zM29 34h1v1h-1zM31 34h1v1h-1zM33 34h1v1h-1z" fill="#1b2a27"/></svg></div>
+    <div class="qrcap">카메라로 찍으면 학생앱이 열립니다</div>
+  </section>
+
+  <!-- 로그인 & 홈 화면 추가 -->
+  <section class="card">
+    <h2>🔑 처음 들어가는 방법</h2>
+    <ol class="steps">
+      <li>위 <b>「학생앱 열기」</b>를 누릅니다.</li>
+      <li><b>학생ID</b>와 <b>출결번호(PIN 4자리)</b>를 넣습니다.<br>
+        <span style="color:var(--muted);font-size:14px">학원에서 등원할 때 누르는 그 번호입니다. 학생ID는 학원에서 따로 알려드립니다.</span></li>
+      <li>로그인되면 <b>오늘 과제 · 내 진도 · 최근 수업 기록 · 월말평가서</b>가 보입니다.</li>
+    </ol>
+    <p class="tip">💡 <b>홈 화면에 추가</b>해 두시면 앱처럼 바로 열 수 있어요.<br>
+      아이폰: 사파리 아래 <b>공유(□↑)</b> → <b>홈 화면에 추가</b> ·
+      안드로이드: 크롬 오른쪽 위 <b>⋮</b> → <b>홈 화면에 추가</b></p>
+  </section>
+
+  <!-- 받으시는 알림 -->
+  <section class="card">
+    <h2>💬 카카오톡으로 받으시는 알림</h2>
+    <p class="lead">학원 카카오톡 채널로 자동으로 보내드립니다</p>
+    <div class="feat">
+      <div class="f"><div class="e">🏫</div><b>등원 · 하원 알림</b>
+        <span>아이가 학원에 도착하고 나갈 때 바로 알려드립니다.</span></div>
+      <div class="f"><div class="e">⏰</div><b>미등원 알림</b>
+        <span>수업 시간이 지나도 오지 않으면 연락드립니다.</span></div>
+      <div class="f"><div class="e">📝</div><b>데일리 리포트</b>
+        <span>오늘 진도 · 수업 태도 · 과제 · 테스트 결과를 수업 후 보내드립니다.</span></div>
+      <div class="f"><div class="e">🔁</div><b>재시험 안내</b>
+        <span>단어 · 영작 테스트를 통과하지 못한 날은 남아서 재시험을 보고 하원합니다.</span></div>
+      <div class="f"><div class="e">📋</div><b>월말평가서</b>
+        <span>한 달 동안의 출석 · 진도 · 테스트 결과를 그래프와 함께 정리해 드립니다.</span></div>
+      <div class="f"><div class="e">✅</div><b>과제 체크</b>
+        <span>아이가 학생앱에서 오늘 할 일을 직접 체크합니다. 함께 봐 주세요.</span></div>
+    </div>
+  </section>
+
+  <!-- 부탁드리는 것 -->
+  <section class="card">
+    <h2>🙏 부탁드립니다</h2>
+    <ul class="ask">
+      <li>학원 <b>카카오톡 채널을 차단하지 말아 주세요.</b> 차단하시면 알림이 문자로 대신 가거나 받지 못하실 수 있습니다.</li>
+      <li><b>연락처가 바뀌면</b> 꼭 학원에 알려주세요.</li>
+      <li>재시험이 있는 날 <b>정시에 하원해야 하면</b> 학원으로 전화 부탁드립니다.</li>
+    </ul>
+    <div class="warn"><b>🔒 출결번호(PIN)는 아이만의 비밀번호입니다.</b>
+      다른 사람에게 알려주지 말아 주세요. 잊어버리셨으면 학원에 문의해 주시면 됩니다.</div>
+  </section>
+
+  <p class="foot">궁금하신 점은 언제든 학원으로 연락 주세요.<br>
+    <b data-academy>학원</b> 드림</p>
+</div>
+
+<script>
+  // ★ 학생앱 주소 — 바뀌면 여기와 위 버튼·주소·QR 을 같이 바꾸세요
+  var appUrl = "https://seminar1101-attendance-report.vercel.app/student.html";
+
+  document.getElementById("copyBtn").onclick = function () {
+    var b = this;
+    var done = function () { b.textContent = "✅ 복사했어요"; setTimeout(function(){ b.textContent = "🔗 주소 복사"; }, 1800); };
+    if (navigator.clipboard) navigator.clipboard.writeText(appUrl).then(done, function(){ prompt("주소를 복사하세요", appUrl); });
+    else prompt("주소를 복사하세요", appUrl);
+  };
+</script>
+</body>
+</html>
