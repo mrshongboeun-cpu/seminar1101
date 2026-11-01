@@ -3,14 +3,15 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>학원 자동화</title>
+<title>홈</title>
 <style>
   :root { --line:#e5e2da; --ink:#1f2328; --muted:#6b7280; --green:#1f7a70; --bg:#faf9f6; }
   body { margin:0; background:var(--bg); color:var(--ink); min-height:100vh;
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
   main { max-width:640px; margin:0 auto; padding:48px 20px; }
-  h1 { font-size:24px; margin:0 0 6px; }
-  .sub { color:var(--muted); margin-bottom:28px; }
+  /* 맨 위 학원 이름 (config.js 의 academy 값이 들어감) */
+  h1.academy { font-size:36px; font-weight:900; color:var(--green); margin:0 0 28px; line-height:1.25; word-break:keep-all; }
+  @media (max-width:480px){ h1.academy { font-size:30px; } }
   .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
   a.card { display:block; background:#fff; border:1px solid var(--line); border-radius:14px; padding:20px; text-decoration:none; color:inherit; transition:transform .1s; }
   a.card:hover { transform:translateY(-2px); }
@@ -20,9 +21,7 @@
 </head>
 <body>
 <main>
-  <div data-academy style="font-weight:900;color:var(--green);margin-bottom:2px"></div>
-  <h1>학원 자동화</h1>
-  <div class="sub">출결부터 월말평가서까지 — Vercel + Supabase + Claude</div>
+  <h1 class="academy" data-academy></h1>
   <div class="grid">
     <a class="card" href="/kiosk.html"><div class="emoji">🔑</div><div class="t">출결 키오스크</div><div class="d">학생 PIN 등·하원</div></a>
     <a class="card" href="/board.html"><div class="emoji">🖥</div><div class="t">출결 현황판</div><div class="d">오늘 등원·하원·미등원 실시간</div></a>
