@@ -18,9 +18,38 @@ if (!/^https?:\/\/(localhost|127\.0\.0\.1)[:/]/.test(process.env.ANTHROPIC_BASE_
   delete process.env.ANTHROPIC_API_KEY;
 }
 
+// ── 가짜 Supabase Storage (답지 파일 보관함) — 메모리에만 둡니다 ──
+//   서버(api)가 부르는 것 + 브라우저가 직접 PUT/GET 하는 것(검수 스크립트가 /__fake-storage 로 돌려보냄)
+export const FAKE_STORAGE = new Map();
+export async function fakeStorage(method, rest, bodyBuf) {
+  // rest 예: "object/upload/sign/answers/<path>?token=…"
+  const [p] = rest.split("?");
+  const j = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { "content-type": "application/json" } });
+  if (p === "bucket" && method === "POST") return j({ name: "answers" });
+  let m;
+  if ((m = /^object\/upload\/sign\/answers\/(.+)$/.exec(p))) {
+    if (method === "POST") return j({ url: `/object/upload/sign/answers/${m[1]}?token=up`, token: "up" });
+    if (method === "PUT") { FAKE_STORAGE.set(decodeURIComponent(m[1]), bodyBuf || Buffer.alloc(0)); return j({ Key: m[1] }); }
+  }
+  if ((m = /^object\/sign\/answers\/(.+)$/.exec(p))) {
+    const key = decodeURIComponent(m[1]);
+    if (!FAKE_STORAGE.has(key)) return j({ statusCode: "404", error: "not_found", message: "Object not found" }, 400);
+    if (method === "POST") return j({ signedURL: `/object/sign/answers/${m[1]}?token=dl` });
+    if (method === "GET") return new Response(FAKE_STORAGE.get(key), { status: 200 });
+  }
+  if (p === "object/answers" && method === "DELETE") {
+    for (const k of (JSON.parse(String(bodyBuf || "{}")).prefixes || [])) FAKE_STORAGE.delete(k);
+    return j([]);
+  }
+  return j({ error: "fake storage: unknown " + method + " " + p }, 400);
+}
+
 const realFetch = globalThis.fetch;
 globalThis.fetch = async (url, opts = {}) => {
   const u = String(url);
+  if (u.startsWith("https://fake-supabase/storage/v1/")) {
+    return fakeStorage(opts.method || "GET", u.slice("https://fake-supabase/storage/v1/".length), opts.body);
+  }
   if (u.startsWith("https://fake-supabase")) {
     const m = /\/rest\/v1\/([a-z_]+)\?([\s\S]*)$/.exec(u) || /\/rest\/v1\/([a-z_]+)$/.exec(u);
     const table = m[1], search = m[2] || "";
@@ -45,6 +74,7 @@ const handlers = {
   "/api/attendance": (await import(path.join(APP, "api/attendance.js"))).default,
   "/api/report": (await import(path.join(APP, "api/report.js"))).default,
   "/api/student": (await import(path.join(APP, "api/student.js"))).default,
+  "/api/answers": (await import(path.join(APP, "api/answers.js"))).default,
   "/api/cron": (await import(path.join(APP, "api/cron.js"))).default,
   "/api/config": (await import(path.join(APP, "api/config.js"))).default,
   "/api/import-notion": (await import(path.join(APP, "api/import-notion.js"))).default,
@@ -64,6 +94,12 @@ export function start(port = 4330) {
       catch { res.statusCode = 400; return res.end("bad request"); }
       // 검수용: 노션에 쓰기가 일어났는지 확인하는 창구
       if (u.pathname === "/__notion-writes") { return res.json({ writes: NOTION_WRITES }); }
+      // 검수용: 브라우저가 Supabase Storage 로 직접 올리는 걸 가짜 보관함으로 받는 창구
+      if (u.pathname.startsWith("/__fake-storage/")) {
+        const chunks = []; for await (const c of req) chunks.push(c);
+        const r = await fakeStorage(req.method, req.url.slice("/__fake-storage/".length), Buffer.concat(chunks));
+        res.statusCode = r.status; return res.end(Buffer.from(await r.arrayBuffer()));
+      }
       const h = handlers[u.pathname];
       if (h) {
         let raw = ""; for await (const c of req) raw += c;

@@ -44,6 +44,11 @@
   `FULL_DEFAULT`=0 은 **「18」처럼 만점 없이 적은 점수는 판정하지 않는다**는 뜻 —
   18점인지 18/20인지 모르는 채로 학부모에게 재시 카톡을 보내는 게 더 나쁩니다.
 - 학생앱 화면·문구 → `student.html` / 학생앱이 주는 데이터 → `api/student.js`
+- 📖 **답지** → 관리 화면 `answers.html` + `api/answers.js` · 학생앱은 `api/student.js` 의 `answer`.
+  파일은 Supabase Storage 비공개 보관함 `answers`(`lib/storage.js`), 위치는 `answer_keys` 표(`sql/migrate_answer_keys.sql`).
+  ★ **학원 와이파이에서만** 열림 = Vercel 환경변수 `ACADEMY_IPS`(학원 공인 IP, 쉼표로 여러 개, `1.2.3.*` 가능) — `lib/wifi.js`.
+  비어 있으면 아무 데서도 안 열림. 학생은 **지금 진도 유닛** 답지만 (유닛은 서버가 진도에서 찾음 — 화면 값 안 믿음).
+  화면 버튼으로 IP 를 등록하게 바꾸지 말 것 — 관리자 화면에 비밀번호가 없어서 누구나 자기 IP 를 등록하게 됩니다.
 - 선생님앱 화면 → `teacher.html` / 과제 내주기·현황 → `api/attendance.js` 의 `save-tasks`·`tasks`
 - 담당 선생님 범위 → 학생DB의 `teacher` 칸. API는 `&teacher=이선생` 을 붙이면 그 선생님 것만
   (`students`·`board`·`daily-rows`·`tasks`·`send-daily` 가 지원)

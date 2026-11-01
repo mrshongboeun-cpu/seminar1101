@@ -84,6 +84,9 @@ echo "── 3-1-E. 알림톡 변수 — 자료의 템플릿 문구와 앱이 �
 #  자료의 문구가 한 글자만 어긋나도 수강생 40명의 학부모 카톡에 빈 줄이 나갑니다.
 TESTDB=tapp node alimtalk-vars-check.mjs > /tmp/alim.out 2>&1; AL=$?; tail -3 /tmp/alim.out
 
+echo "── 3-1-F. 📖 답지 — 학원 와이파이에서만 · 지금 진도 유닛만 ──"
+TESTDB=tapp node answers-check.mjs > /tmp/answers.out 2>&1; AK=$?; tail -1 /tmp/answers.out
+
 echo "── 3-2. 노션 이관 (가짜 노션) ──"
 (fuser -k 4330/tcp 2>/dev/null || true); sleep 1
 MOCK_NOTION=1 TESTDB=tapp NOTION_TOKEN=secret_fake \
@@ -167,6 +170,7 @@ FAILED=""
 [ $OD -ne 0 ] && FAILED="$FAILED 쓰던DB"
 [ $FD -ne 0 ] && FAILED="$FAILED 하루전체"
 [ $EW -ne 0 ] && FAILED="$FAILED 빈화면이유"
+[ $AK -ne 0 ] && FAILED="$FAILED 답지"
 if [ -z "$FAILED" ]; then
   echo "
 ✅ 전면 검수 통과"
@@ -174,6 +178,6 @@ if [ -z "$FAILED" ]; then
 else
   echo "
 ❌ 검수 실패 —$FAILED
-   자세한 내용: /tmp/schema.out · /tmp/notion.out · /tmp/e2e.out · /tmp/report.out · /tmp/flow.out · /tmp/rest.out · /tmp/auto.out · /tmp/br.out · /tmp/smoke.out · /tmp/pers.out · /tmp/dberr.out · /tmp/clerr.out · /tmp/retest.out · /tmp/url.out · /tmp/solapi.out · /tmp/alim.out · /tmp/tocdup.out · /tmp/olddb.out · /tmp/fullday.out · /tmp/emptywhy.out"
+   자세한 내용: /tmp/schema.out · /tmp/notion.out · /tmp/e2e.out · /tmp/report.out · /tmp/flow.out · /tmp/rest.out · /tmp/auto.out · /tmp/br.out · /tmp/smoke.out · /tmp/pers.out · /tmp/dberr.out · /tmp/clerr.out · /tmp/retest.out · /tmp/url.out · /tmp/solapi.out · /tmp/alim.out · /tmp/tocdup.out · /tmp/olddb.out · /tmp/fullday.out · /tmp/emptywhy.out · /tmp/answers.out"
   exit 1
 fi
