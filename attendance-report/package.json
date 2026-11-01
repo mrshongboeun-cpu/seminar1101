@@ -1,0 +1,8 @@
+{
+  "name": "monthly-report-generator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "월말평가서 생성기 (Vercel + Supabase + Claude) — 세미나 실습 템플릿",
+  "engines": { "node": ">=18" }
+}

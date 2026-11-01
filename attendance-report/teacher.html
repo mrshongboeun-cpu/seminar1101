@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>선생님앱</title>
+  <!-- 선생님이 쓰는 화면. 담당 학생만 보이고, 과제를 내주고 체크 현황을 본다.
+       담당 구분은 학생DB의 '담당 선생님'(students.teacher) 컬럼 — 2차 세미나부터 있던 속성. -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap');
+    :root { --green: #1f7a70; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Noto Sans KR', -apple-system, sans-serif; background: #f5f6fa; color: #333; }
+    .header { background: var(--green); color: #fff; padding: 20px; }
+    .header .wrap { max-width: 900px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .header h1 { font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+    /* 홈 버튼은 **머리글**에 둡니다 — 아래쪽 링크 줄에만 있으면 학생 목록이 길 때
+       스크롤해야 보여서 "홈으로 가는 버튼이 없다"는 말을 듣습니다. */
+    .header .home { color: #fff; text-decoration: none; background: rgba(255,255,255,.2);
+      border-radius: 8px; padding: 4px 10px; font-size: 14px; white-space: nowrap; }
+    .header .home:hover { background: rgba(255,255,255,.32); }
+    .header .right { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    .header select, .header input { padding: 8px 10px; border: none; border-radius: 8px; font-size: 14px; font-family: inherit; }
+    .content { max-width: 900px; margin: 0 auto; padding: 18px 16px 60px; }
+
+    .card { background: #fff; border-radius: 14px; padding: 18px; margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,.05); }
+    .card h2 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .card .hint { font-size: 12px; color: #999; margin-bottom: 14px; line-height: 1.5; }
+
+    .stats { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+    .stat { flex: 1; min-width: 86px; background: #f8f9fb; border-radius: 10px; padding: 11px; text-align: center; }
+    .stat .v { font-size: 19px; font-weight: 700; } .stat .l { font-size: 11px; color: #999; margin-top: 2px; }
+    .stat.warn .v { color: #d9534f; } .stat.good .v { color: #2e9e6b; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 9px 7px; border-bottom: 1px solid #f2f2f2; text-align: left; }
+    th { color: #999; font-weight: 500; font-size: 11px; }
+    .badge { display: inline-block; border-radius: 6px; padding: 2px 7px; font-size: 11px; font-weight: 600; }
+    .b수업중 { background: #e8f5e9; color: #2e7d32; } .b하원 { background: #eceff1; color: #607d8b; }
+    .b미등원 { background: #fff8e1; color: #a1760a; } .b지각미등원 { background: #fdecea; color: #c0392b; }
+    .b결석 { background: #fdecea; color: #c0392b; } .b곧하원 { background: #e3f2fd; color: #1565c0; }
+
+    .pick { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }
+    .pick label { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid #e5e5e5; border-radius: 9px; padding: 7px 11px; font-size: 13px; cursor: pointer; }
+    .pick label.on { border-color: var(--green); background: #f3faf9; font-weight: 600; }
+    .pick input { accent-color: var(--green); }
+
+    .item { display: flex; gap: 7px; margin-bottom: 7px; flex-wrap: wrap; }
+    .item select, .item input { padding: 9px 10px; border: 1.5px solid #e5e5e5; border-radius: 9px; font-size: 13px; font-family: inherit; }
+    .item input.title { flex: 1; min-width: 180px; }
+    .item button { border: none; background: #f2f2f2; border-radius: 9px; padding: 0 12px; cursor: pointer; color: #888; font-size: 16px; }
+
+    .btn { padding: 11px 18px; background: var(--green); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; }
+    .btn.ghost { background: #fff; color: var(--green); border: 1.5px solid var(--green); }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+    .tline { display: flex; align-items: center; gap: 9px; padding: 9px 10px; border-bottom: 1px solid #f4f4f4; font-size: 13px; }
+    .tline .who { width: 74px; font-weight: 600; flex-shrink: 0; }
+    .tline .ti { flex: 1; } .tline.done .ti { color: #9aa; text-decoration: line-through; }
+    .tline .st { font-size: 11px; font-weight: 600; } .tline .st.y { color: #2e9e6b; } .tline .st.n { color: #c9a227; }
+    .tline .x { border: none; background: none; color: #ccc; cursor: pointer; font-size: 15px; }
+    .tag { background: #eef4f3; color: #4a7c75; border-radius: 5px; padding: 1px 6px; font-size: 11px; font-weight: 500; }
+    .tag.home { background: #fff3e0; color: #b1731f; }
+
+    .empty { text-align: center; color: #aaa; font-size: 13px; padding: 20px 0; }
+    .links a { color: var(--green); font-size: 13px; margin-right: 14px; }
+    .tag.auto { background: #eef4ff; color: #2b5fd9; border-color: #d4e1fb; }
+    .toast { position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%) translateY(120px); background: #333; color: #fff; padding: 11px 22px; border-radius: 10px; font-size: 13px; z-index: 300; transition: transform .3s, visibility 0s .3s; visibility: hidden; }
+    .toast.show { transform: translateX(-50%) translateY(0);  visibility: visible; transition: transform .3s; }
+  </style>
+  <script src="/config.js"></script>
+</head>
+<body>
+  <div class="header"><div class="wrap">
+    <h1><a class="home" href="/" title="홈으로">🏠 홈</a><span>👩‍🏫 <span data-academy></span> 선생님앱</span></h1>
+    <div class="right">
+      <select id="teacher" onchange="onTeacher()"></select>
+      <input type="date" id="date" onchange="load()">
+    </div>
+  </div></div>
+
+  <div class="content">
+    <div class="card">
+      <h2>오늘 내 담당 학생</h2>
+      <div class="hint">담당은 학생관리의 <b>담당 선생님</b> 칸으로 정해집니다. 비어 있는 학생은 어느 선생님 화면에도 안 보여요.</div>
+      <div class="stats" id="stats"></div>
+      <div id="board"></div>
+      <div class="links" style="margin-top:12px">
+        <a id="toDaily" href="/daily.html">📝 데일리 리포트 작성 →</a>
+        <a href="/board.html">🖥 전체 현황판 →</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>과제 내주기</h2>
+      <div class="hint">고른 학생들에게 같은 과제가 한 번에 들어갑니다. 학생이 <b>학생앱</b>에서 체크하면 아래 현황에 바로 보여요.<br>
+        진도에서 끌어오려면 <b>「진도로 채우기」</b>를 누르세요 — 오늘 진도 유닛이 과제 제목에 들어갑니다.</div>
+      <div class="pick" id="pick"></div>
+      <div class="row" style="margin-bottom:12px">
+        <button class="btn ghost" onclick="pickAll(true)">전체 선택</button>
+        <button class="btn ghost" onclick="pickAll(false)">전체 해제</button>
+      </div>
+      <div id="items"></div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn ghost" onclick="addItem()">＋ 줄 추가</button>
+        <button class="btn ghost" onclick="fillFromProgress()">진도로 채우기</button>
+        <button class="btn" onclick="saveTasks()">과제 내주기</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>과제 체크 현황</h2>
+      <div class="hint">학생이 폰에서 체크한 결과입니다.</div>
+      <div class="stats" id="tstats"></div>
+      <div id="tasks"></div>
+    </div>
+
+    <!-- 학생별 과제 이력 — "이 아이가 지난달에 과제를 몇 번 빼먹었나" 를 보는 곳.
+         예전에는 '오늘' 밖에 못 봐서 이력을 볼 데가 없었습니다. -->
+    <div class="card">
+      <h2>학생별 과제 이력</h2>
+      <div class="hint">기간을 정해 한 학생의 과제를 모아 봅니다. 상담·월말평가서 쓸 때 보세요.</div>
+      <div class="row" style="margin:8px 0;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <select id="hStudent" style="min-width:120px"></select>
+        <input type="date" id="hFrom">
+        <span>~</span>
+        <input type="date" id="hTo">
+        <button class="btn" onclick="loadHistory()">보기</button>
+        <label style="display:flex;align-items:center;gap:4px;font-size:13px">
+          <input type="checkbox" id="hPending" checked onchange="renderHistory()"> 미완료만
+        </label>
+      </div>
+      <div class="stats" id="hstats"></div>
+      <div id="history"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+  var KEY = 'teacherApp';           // 고른 선생님을 이 브라우저에 기억
+  var state = { students: [], tasks: [], board: [] };
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+    return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+  function toast(m) { var t = $('toast'); t.textContent = m; t.classList.add('show'); setTimeout(function () { t.classList.remove('show'); }, 1900); }
+  function teacher() { return $('teacher').value; }
+  function date() { return $('date').value; }
+  function q() { return 'date=' + encodeURIComponent(date()) + (teacher() ? '&teacher=' + encodeURIComponent(teacher()) : ''); }
+
+  async function post(body) {
+    var res = await fetch('/api/attendance', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    var d = await res.json();
+    if (!res.ok) throw new Error(d.error || '오류가 났어요.');
+    return d;
+  }
+  async function get(path) {
+    var res = await fetch('/api/attendance?' + path);
+    var d = await res.json();
+    if (!res.ok) throw new Error(d.error || '오류가 났어요.');
+    return d;
+  }
+
+  function onTeacher() { localStorage.setItem(KEY, teacher()); load(); }
+
+  async function init() {
+    $('date').value = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10); // KST 오늘
+    try {
+      var d = await get('action=teachers');
+      var saved = localStorage.getItem(KEY) || '';
+      $('teacher').innerHTML = '<option value="">전체 (원장님)</option>'
+        + d.teachers.map(function (t) { return '<option' + (t === saved ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('');
+    } catch (e) { toast(e.message); }
+    load();   // 과제 줄은 학생·과목을 불러온 뒤 load() 안에서 만든다
+  }
+
+  async function load() {
+    $('toDaily').href = '/daily.html?date=' + encodeURIComponent(date())
+      + (teacher() ? '&teacher=' + encodeURIComponent(teacher()) : '');
+    try {
+      var b = await get('action=board&' + q());
+      state.board = b.students;
+      renderStats(b.stats);
+      renderBoard(b.students);
+      var t = await get('action=tasks&' + q());
+      state.students = t.students;
+      state.tasks = t.tasks;
+      renderPick();
+      renderTasks();
+      fillHistoryStudents();
+      if (!document.querySelector('#items .item')) addItem();
+    } catch (e) { toast(e.message); }
+  }
+
+  function renderStats(s) {
+    var defs = [['오늘예정', ''], ['수업중', 'good'], ['곧하원', ''], ['하원완료', ''], ['미등원', 'warn'], ['지각미등원', 'warn'], ['결석', 'warn']];
+    $('stats').innerHTML = defs.map(function (d) {
+      return '<div class="stat ' + d[1] + '"><div class="v">' + (s[d[0]] || 0) + '</div><div class="l">' + d[0] + '</div></div>';
+    }).join('');
+  }
+
+  function renderBoard(list) {
+    if (!list.length) { $('board').innerHTML = '<div class="empty">오늘 수업 예정인 담당 학생이 없어요.</div>'; return; }
+    $('board').innerHTML = '<table><tr><th>학생</th><th>예정</th><th>등원</th><th>상태</th><th>진도</th></tr>'
+      + list.map(function (x) {
+          var pr = Object.entries((x.record && x.record.progress) || {})
+            .map(function (e) { var u = e[1] || {}; return e[0] + ' ' + (u.code || u); }).join(' · ');
+          // 학생 이름 → 📋 학생 카드 (지난 진도 쭉). 담당 선생님을 같이 넘겨 담당 학생만 고르게.
+          var card = '/student_card.html?student_id=' + encodeURIComponent(x.student_id)
+            + (teacher() ? '&teacher=' + encodeURIComponent(teacher()) : '');
+          return '<tr><td><a href="' + card + '" target="_blank" style="color:inherit"><b>' + esc(x.name) + '</b></a>'
+            + (x.grade ? ' <span style="color:#aaa;font-size:11px">' + esc(x.grade) + '</span>' : '') + '</td>'
+            + '<td>' + esc(x.scheduled || '-') + '</td>'
+            + '<td>' + esc((x.record && x.record.check_in) || '-') + '</td>'
+            + '<td><span class="badge b' + esc(x.status.replace(/\s/g, '')) + '">' + esc(x.status) + '</span></td>'
+            + '<td style="color:#777;font-size:12px">' + esc(pr || '-') + '</td></tr>';
+        }).join('') + '</table>';
+  }
+
+  function renderPick() {
+    $('pick').innerHTML = state.students.length ? state.students.map(function (s) {
+      return '<label><input type="checkbox" value="' + s.id + '" onchange="this.parentNode.classList.toggle(\'on\',this.checked)">'
+        + esc(s.name) + '</label>';
+    }).join('') : '<div class="empty">담당 학생이 없어요.</div>';
+  }
+
+  function pickAll(on) {
+    document.querySelectorAll('#pick input').forEach(function (c) { c.checked = on; c.parentNode.classList.toggle('on', on); });
+  }
+
+  function addItem(kind, subject, title) {
+    var subjects = [''].concat([...new Set(state.students.flatMap(function (s) { return Object.keys(s.books || {}); }))]);
+    var div = document.createElement('div');
+    div.className = 'item';
+    div.innerHTML = '<select class="kind">'
+        + ['집', '학원'].map(function (k) { return '<option' + (k === kind ? ' selected' : '') + '>' + k + '</option>'; }).join('') + '</select>'
+      + '<select class="subject">' + subjects.map(function (s) {
+          return '<option value="' + esc(s) + '"' + (s === subject ? ' selected' : '') + '>' + (s ? esc(s) : '과목 없음') + '</option>'; }).join('') + '</select>'
+      + '<input class="title" placeholder="과제 내용 (예: 워크북 p.42~45)" value="' + esc(title || '') + '">'
+      + '<button onclick="this.parentNode.remove()">✕</button>';
+    $('items').appendChild(div);
+  }
+
+  // 오늘 진도를 읽어 과목별로 한 줄씩 만든다 — 진도를 과제로 옮겨 적는 수고를 없앤다.
+  function fillFromProgress() {
+    var byS = {};
+    state.board.forEach(function (x) {
+      Object.entries((x.record && x.record.progress) || {}).forEach(function (e) {
+        var u = e[1] || {}; var code = u.code || u;
+        if (code) (byS[e[0]] = byS[e[0]] || new Set()).add(String(code));
+      });
+    });
+    var keys = Object.keys(byS);
+    if (!keys.length) { toast('오늘 진도가 아직 없어요. 데일리 리포트에서 진도를 먼저 확인해주세요.'); return; }
+    $('items').innerHTML = '';
+    // ★ 유닛마다 **한 줄씩** 만듭니다.
+    //   예전에는 반 전체 유닛을 이어붙여서 「문법 6과. 과거시제, Unit 8. 비교급, Unit 6. 분사 복습」
+    //   같은 줄이 아이 폰에 그대로 떴습니다. 읽을 수가 없어요.
+    //   줄이 많으면 ✕ 로 지우시면 됩니다 — 고쳐 쓰라고 만든 칸입니다.
+    var 줄수 = 0;
+    keys.forEach(function (s) {
+      [...byS[s]].forEach(function (u) { addItem('집', s, s + ' ' + u + ' 복습'); 줄수++; });
+    });
+    toast(keys.length + '과목 ' + 줄수 + '줄을 채웠어요. 집/학원과 내용은 고쳐도 됩니다.');
+  }
+
+  async function saveTasks() {
+    var ids = [...document.querySelectorAll('#pick input:checked')].map(function (c) { return c.value; });
+    var items = [...document.querySelectorAll('#items .item')].map(function (el) {
+      return { kind: el.querySelector('.kind').value, subject: el.querySelector('.subject').value, title: el.querySelector('.title').value.trim() };
+    }).filter(function (it) { return it.title; });
+    if (!ids.length) { toast('학생을 한 명 이상 골라주세요.'); return; }
+    if (!items.length) { toast('과제 내용을 적어주세요.'); return; }
+    try {
+      var d = await post({ action: 'save-tasks', date: date(), student_ids: ids, items: items });
+      toast(d.created + '건 내줬어요.');
+      $('items').innerHTML = ''; addItem(); pickAll(false);
+      load();
+    } catch (e) { toast(e.message); }
+  }
+
+  function renderTasks() {
+    var t = state.tasks;
+    var done = t.filter(function (x) { return x.done; }).length;
+    $('tstats').innerHTML = '<div class="stat"><div class="v">' + t.length + '</div><div class="l">낸 과제</div></div>'
+      + '<div class="stat good"><div class="v">' + done + '</div><div class="l">완료</div></div>'
+      + '<div class="stat warn"><div class="v">' + (t.length - done) + '</div><div class="l">미완료</div></div>';
+    if (!t.length) { $('tasks').innerHTML = '<div class="empty">이 날 낸 과제가 없어요.</div>'; return; }
+    $('tasks').innerHTML = t.map(function (x) {
+      return '<div class="tline' + (x.done ? ' done' : '') + '"><div class="who">' + esc(x.name) + '</div>'
+        + '<div class="ti">' + esc(x.title) + ' <span class="tag' + (x.kind === '집' ? ' home' : '') + '">' + esc(x.kind) + '</span>'
+        + (x.subject ? ' <span class="tag">' + esc(x.subject) + '</span>' : '')
+        // 교재 목차에서 저절로 나온 과제는 표시해 둡니다. 지워도 **진도를 고치면 다시**
+        // 생기기 때문에, 선생님이 "왜 또 생겼지?" 하지 않도록 구분해 줍니다.
+        + (x.auto ? ' <span class="tag auto" title="교재 목차의 과제에서 자동으로 나온 것입니다">자동</span>' : '')
+        + '</div>'
+        + '<div class="st ' + (x.done ? 'y' : 'n') + '">' + (x.done ? '완료' : '미완료') + '</div>'
+        + '<button class="x" title="삭제" onclick="del(\'' + x.id + '\')">✕</button></div>';
+    }).join('');
+  }
+
+  // ── 학생별 과제 이력 ──────────────────────────────
+  function fillHistoryStudents() {
+    var sel = $('hStudent');
+    if (!sel) return;
+    // ⚠️ 선생님을 바꾸면 **다시 채운다.** 한 번만 채우면 전체 목록이 남아서
+    //    박선생 화면에서 이선생 담당 학생을 고를 수 있게 됩니다
+    //    (선생님앱이 지켜야 할 "담당 학생만" 이 깨짐).
+    var keep = sel.value;
+    sel.innerHTML = (state.students || []).map(function (s) {
+      return '<option value="' + s.id + '">' + esc(s.name) + '</option>';
+    }).join('');
+    // 바꾸기 전에 고른 학생이 여전히 담당이면 그대로 둔다
+    if (keep && Array.prototype.some.call(sel.options, function (o) { return o.value === keep; })) sel.value = keep;
+    // 담당이 바뀌어 목록에서 사라졌으면 이전 결과도 지운다
+    else { $('history').innerHTML = ''; $('hstats').innerHTML = ''; }
+    // 기본 기간: 이번 달 1일 ~ 오늘
+    var d = date() || new Date().toISOString().slice(0, 10);
+    if (!$('hFrom').value) $('hFrom').value = d.slice(0, 8) + '01';
+    if (!$('hTo').value) $('hTo').value = d;
+  }
+
+  async function loadHistory() {
+    var sid = $('hStudent').value, from = $('hFrom').value, to = $('hTo').value;
+    if (!sid) { toast('학생을 고르세요.'); return; }
+    if (!from || !to) { toast('기간을 정해주세요.'); return; }
+    try {
+      var d = await get('action=tasks&from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to)
+        + '&student_id=' + encodeURIComponent(sid) + (teacher() ? '&teacher=' + encodeURIComponent(teacher()) : ''));
+      state.history = d.tasks || [];
+      state.historySummary = d.summary || { total: state.history.length, done: 0, rate: null };
+      renderHistory();
+    } catch (e) { toast(e.message); }
+  }
+
+  // 「미완료만」 은 기본으로 켜 둡니다 — 선생님이 이력에서 실제로 찾는 건
+  // "누가 안 했나" 이기 때문입니다. (운영 과제 현황 화면도 같은 기본값)
+  function renderHistory() {
+    try {
+      var all = state.history || [], sm = state.historySummary || { total: 0, done: 0, rate: null };
+      var pend = $('hPending') && $('hPending').checked;
+      var t = pend ? all.filter(function (x) { return !x.done; }) : all;
+      $('hstats').innerHTML = '<div class="stat"><div class="v">' + sm.total + '</div><div class="l">받은 과제</div></div>'
+        + '<div class="stat good"><div class="v">' + sm.done + '</div><div class="l">완료</div></div>'
+        + '<div class="stat warn"><div class="v">' + (sm.total - sm.done) + '</div><div class="l">미완료</div></div>'
+        + '<div class="stat"><div class="v">' + (sm.rate == null ? '-' : sm.rate + '%') + '</div><div class="l">완료율</div></div>';
+      if (!t.length) {
+        $('history').innerHTML = '<div class="empty">'
+          + (pend && all.length ? '이 기간에 <b>안 한 과제가 없습니다.</b> 전부 완료했어요 👏' : '이 기간에 받은 과제가 없어요.')
+          + '</div>';
+        return;
+      }
+      $('history').innerHTML = t.map(function (x) {
+        return '<div class="tline' + (x.done ? ' done' : '') + '">'
+          + '<div class="who">' + esc(x.date) + '</div>'
+          + '<div class="ti">' + esc(x.title)
+          + ' <span class="tag' + (x.kind === '집' ? ' home' : '') + '">' + esc(x.kind) + '</span>'
+          + (x.subject ? ' <span class="tag">' + esc(x.subject) + '</span>' : '') + '</div>'
+          + '<div class="st ' + (x.done ? 'y' : 'n') + '">' + (x.done ? '완료' : '미완료') + '</div></div>';
+      }).join('');
+    } catch (e) { toast(e.message); }
+  }
+
+  async function del(id) {
+    if (!confirm('이 과제를 지울까요?')) return;
+    try { await post({ action: 'delete-task', id: id }); load(); } catch (e) { toast(e.message); }
+  }
+
+  init();
+</script>
+</body>
+</html>

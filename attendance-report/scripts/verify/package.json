@@ -1,0 +1,10 @@
+{
+  "name": "attendance-report-verify",
+  "private": true,
+  "type": "module",
+  "description": "전면 검수 전용 — 앱 배포와 무관합니다 (Vercel 은 루트 package.json 만 봅니다)",
+  "dependencies": {
+    "pg": "8.13.1",
+    "playwright": "1.49.1"
+  }
+}

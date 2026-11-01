@@ -1,0 +1,85 @@
+<!doctype html>
+<!--
+  ★ 이 파일은 **리포지토리 맨 위**에 둡니다 (academy-system 루트).
+
+  왜 있나: Vercel 의 Root Directory 를 `attendance-report` 로 안 바꾸면
+    Vercel 이 리포 맨 위를 보고, 거기엔 화면 파일이 없어서
+    영어로 된 「This page doesn't exist / 404 NOT_FOUND」 가 뜹니다.
+    뭘 틀렸는지 알 길이 없어서, 설치 단계에서 제일 많이 막히는 자리입니다.
+    (글로 다섯 군데에 적어놔도 Import 화면이 Root Directory 를 접어두기 때문에 지나갑니다)
+
+  Root Directory 를 제대로 넣으면 Vercel 은 `attendance-report/` 만 보므로
+  **이 파일은 아예 서빙되지 않습니다.** 제대로 한 분에겐 없는 것과 같고,
+  틀린 분만 이 안내를 보게 됩니다.
+
+  ⚠️ 원본은 seminar-materials 의 `template-root/index.html` 입니다.
+     고치면 academy-system 루트로 복사하세요 (preflight 4단계가 대조합니다).
+-->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Root Directory 를 바꿔주세요</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚠️</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+  :root{ --ink:#1b2a27; --muted:#64756f; --line:#e2e9e6; --green:#1f7a70; --warn:#b4472e; --bg:#f6f8f7; --card:#fff; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:'Noto Sans KR',-apple-system,BlinkMacSystemFont,sans-serif;
+       line-height:1.75;padding:40px 16px}
+  .wrap{max-width:660px;margin:0 auto}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:30px 28px;
+        box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  h1{margin:0 0 6px;font-size:22px;font-weight:900;color:var(--warn);word-break:keep-all}
+  .lead{margin:0 0 22px;color:var(--muted);font-size:14.5px;word-break:keep-all}
+  ol{margin:0;padding-left:0;list-style:none;counter-reset:s}
+  li{counter-increment:s;position:relative;padding:13px 0 13px 42px;border-bottom:1px solid var(--line);
+     font-size:14.5px;word-break:keep-all}
+  li:last-child{border-bottom:none}
+  li::before{content:counter(s);position:absolute;left:0;top:14px;width:28px;height:28px;border-radius:8px;
+             background:rgba(31,122,112,.1);color:var(--green);font-family:'Space Mono',monospace;
+             font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center}
+  code{font-family:'Space Mono',monospace;font-size:13px;background:rgba(31,122,112,.09);
+       color:var(--green);padding:2px 7px;border-radius:5px;word-break:break-all}
+  .big{display:block;margin:10px 0 2px;font-size:17px;padding:9px 14px}
+  .why{margin-top:22px;padding:15px 17px;background:#f0f5f3;border-radius:11px;
+       font-size:13px;color:var(--muted);word-break:keep-all}
+  .why b{color:var(--ink)}
+  .ok{margin-top:18px;padding:14px 17px;border-radius:11px;background:#eef7f2;border:1px solid #cfe6da;
+      font-size:13.5px;word-break:keep-all}
+  .foot{margin-top:18px;text-align:center;font-size:12.5px;color:var(--muted)}
+  .foot a{color:var(--green)}
+  @media (max-width:480px){ body{padding:24px 12px} .card{padding:24px 18px} h1{font-size:19px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>⚠️ 거의 다 왔어요 — 한 칸만 바꾸면 됩니다</h1>
+    <p class="lead">배포는 됐는데 Vercel 이 <b>엉뚱한 폴더</b>를 보고 있습니다.
+      화면 파일은 전부 <code>attendance-report</code> 안에 있어요.</p>
+
+    <ol>
+      <li>Vercel 에서 이 프로젝트 → <b>Settings</b></li>
+      <li><b>Build and Deployment</b> (또는 General) 에서 <b>Root Directory</b> 찾기</li>
+      <li><code>./</code> 로 돼 있는 걸 아래로 바꾸고 <b>Save</b>
+        <code class="big">attendance-report</code></li>
+      <li><b>Deployments</b> 탭 → 맨 위 배포의 <b>⋯</b> → <b>Redeploy</b>
+        <br><span style="color:var(--warn);font-weight:700">설정만 바꾸면 안 바뀝니다 — Redeploy 를 꼭 눌러야 새 설정으로 다시 짓습니다.</span></li>
+    </ol>
+
+    <div class="ok"><b>✅ 제대로 되면</b> 1~2분 뒤 이 주소에 <b>화면 버튼 4개가 있는 홈</b>이 뜹니다.
+      그 다음 <b>Settings → Environment Variables</b> 에서 <code>SUPABASE_URL</code> ·
+      <code>SUPABASE_SERVICE_KEY</code> <b>두 개만</b> 넣고 또 한 번 <b>Redeploy</b> 하세요.
+      (환경변수는 이미 배포된 것에는 적용되지 않습니다)</div>
+
+    <div class="why"><b>왜 이 안내가 보이나</b> — 이 글이 보인다는 건 Vercel 이 저장소 <b>맨 위</b>를
+      띄우고 있다는 뜻입니다. 맨 위에는 설명 파일만 있고 화면 파일이 없어서, 원래라면 영어로 된
+      「This page doesn't exist」 404 가 떴을 자리예요. Root Directory 를 제대로 넣으시면
+      이 페이지는 <b>다시 보이지 않습니다.</b></div>
+  </div>
+  <p class="foot">올인원 학원 시스템 · <a href="https://github.com/nauta325/academy-system">템플릿 리포</a></p>
+</div>
+</body>
+</html>

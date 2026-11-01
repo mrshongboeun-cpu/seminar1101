@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>학생 카드</title>
+<style>
+  :root { --line:#e5e2da; --ink:#1f2328; --muted:#6b7280; --green:#1f7a70; --bg:#faf9f6;
+    --late:#c98a2e; --absent:#cf6a4a; --ok:#1c9a66; --bad:#c0392b; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
+  header { padding:16px 20px; border-bottom:1px solid var(--line); background:#fff; display:flex;
+    justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
+  h1 { margin:0; font-size:19px; }
+  nav a { font-size:13px; color:var(--muted); text-decoration:none; margin-left:12px; }
+  nav a:hover, nav a.on { color:var(--green); font-weight:700; }
+  main { max-width:960px; margin:0 auto; padding:20px; }
+  .bar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
+  input, select, button { font-family:inherit; font-size:14px; }
+  select { padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+  .btn { padding:8px 14px; border-radius:8px; cursor:pointer; border:1px solid var(--line); background:#fff; }
+  .seg { display:flex; gap:4px; }
+  .seg button { padding:8px 14px; border:1px solid var(--line); background:#fff; border-radius:8px; cursor:pointer; }
+  .seg button.on { background:var(--green); color:#fff; border-color:var(--green); }
+  .muted { color:var(--muted); font-size:13px; }
+  .err { color:var(--absent); font-size:13px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:12px; }
+  .card.empty { color:var(--muted); text-align:center; padding:28px 16px; }
+  .ttl { font-size:15px; font-weight:800; }
+  .sub { color:var(--muted); font-size:12px; margin:2px 0 8px; }
+  /* 프로필 */
+  .profile { display:flex; gap:12px; align-items:baseline; flex-wrap:wrap; }
+  .profile .nm { font-size:20px; font-weight:800; }
+  .kv { font-size:13px; color:var(--muted); }
+  .kv b { color:var(--ink); }
+  .pill { font-size:12px; font-weight:700; padding:3px 9px; border-radius:999px; background:#f1f0ea; color:var(--muted); }
+  .pill.late { background:#fbeee9; color:var(--late); }
+  .pill.ok { background:#e7f0ee; color:var(--green); }
+  /* 📊 과목별 진도 흐름 */
+  .flow { display:grid; grid-template-columns:52px 1fr; gap:8px; align-items:baseline; margin:6px 0; }
+  .flow .k { font-size:12px; font-weight:800; color:var(--muted); }
+  .flow .v { display:flex; flex-wrap:wrap; gap:4px; align-items:baseline; font-size:12.5px; }
+  .flow .st { background:#f6f5f0; border-radius:7px; padding:3px 8px; white-space:nowrap; }
+  .flow .st small { color:var(--muted); font-size:10.5px; margin-right:4px; }
+  .flow .ar { color:#c9c6bc; }
+  /* 📅 진도 표 */
+  .ptwrap { overflow-x:auto; }
+  table.pt { width:100%; border-collapse:collapse; font-size:12px; }
+  table.pt th, table.pt td { padding:5px 8px; border-bottom:1px solid #f1f1f1; text-align:left; vertical-align:top; }
+  table.pt th { background:#faf8f4; font-size:11px; color:#8a8f98; font-weight:700; white-space:nowrap; }
+  table.pt td.dt { white-space:nowrap; font-weight:700; width:92px; }
+  table.pt .same { color:#b5bac2; }
+  .bad { color:var(--bad); font-weight:700; } .ok { color:var(--ok); font-weight:700; }
+  /* 날짜별 자세히 */
+  .day { background:#fff; border:1px solid var(--line); border-radius:12px; padding:11px 14px; margin-bottom:9px; }
+  .dhead { display:flex; gap:7px; align-items:center; flex-wrap:wrap; margin-bottom:5px; }
+  .dhead .dt { font-size:14px; font-weight:800; }
+  .ln { display:grid; grid-template-columns:72px 1fr; gap:8px; font-size:12.5px; margin:3px 0; }
+  .ln .k { color:var(--muted); font-weight:700; font-size:11.5px; }
+</style>
+<script src="/config.js"></script>
+</head>
+<body>
+<header>
+  <h1><span data-academy></span> 📋 학생 카드</h1>
+  <nav>
+    <a href="/" title="홈으로">🏠 홈</a><a href="/board.html">현황판</a><a href="/daily.html">데일리 리포트</a>
+    <a href="/kiosk.html">키오스크</a><a href="/students.html">학생관리</a>
+    <a href="/student_card.html" class="on">학생 카드</a>
+    <a href="/books.html">교재</a><a href="/report.html">월말평가서</a>
+  </nav>
+</header>
+<main>
+  <div class="bar">
+    <select id="stu" style="max-width:220px"><option value="">학생 불러오는 중…</option></select>
+    <div class="seg" id="seg">
+      <button data-d="7">1주</button><button data-d="30">1달</button><button data-d="90">3달</button>
+    </div>
+    <button class="btn" id="reload">🔄 새로고침</button>
+    <a class="btn" id="toDaily" href="/daily.html" style="text-decoration:none;color:inherit;margin-left:auto">📝 오늘 리포트 쓰기</a>
+  </div>
+  <div class="muted" style="margin-bottom:12px">
+    한 학생이 <b>어디서 멈췄는지</b> 기간으로 쭉 봅니다 — 데일리 리포트의 📜 최근 수업은 오늘 행 안에서 8번까지만 보여줘요.<br>
+    📊 는 <b>같은 진도가 이어진 날을 묶어</b>(×횟수) 흐름으로, 📅 는 날짜별 표로 보여줍니다.
+  </div>
+  <div id="msg" class="err"></div>
+  <div id="out"><div class="muted">학생을 고르면 이력이 열립니다.</div></div>
+</main>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const WD = ["일","월","화","수","목","금","토"];
+const QS = new URLSearchParams(location.search);
+// 선생님앱에서 넘어오면 ?teacher= 로 담당 학생만 고르게 한다 (daily.html 과 같은 방식)
+const TEACHER = (QS.get("teacher") || "").trim();
+const TQ = TEACHER ? "&teacher=" + encodeURIComponent(TEACHER) : "";
+let SID = (QS.get("student_id") || "").trim();
+let DAYS = [7,30,90].includes(+QS.get("days")) ? +QS.get("days") : 30;
+let DATA = null, OPEN = false;   // OPEN = 「날짜별 자세히」 펼침
+
+function esc(s){ return (s ?? "").toString().replace(/[&<>"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+// 날짜는 "2026-05-01" 로 오지만, 환경에 따라 "2026-05-01T00:00:00.000Z" 로 올 수도 있습니다.
+// 앞 10자만 잘라 쓰지 않으면 화면에 "05/01T00:00:00.000Z" 가 그대로 새어 나옵니다.
+function md(d){ return String(d||"").slice(0,10).slice(5).replace("-","/"); }
+function wdOf(d){
+  const t = new Date(String(d||"").slice(0,10) + "T00:00:00Z");
+  return isNaN(t.getTime()) ? "" : WD[t.getUTCDay()];
+}
+function dateLabel(d){ return md(d) + " " + wdOf(d); }
+function isFail(v){ return /불통과|미통과|재시/.test(String(v||"")); }
+// 유닛 {code,title} → "코드 — 제목" (daily.html 과 같은 표기)
+function normU(u){ if(!u) return {code:"",title:""}; if(typeof u==="string") return {code:u,title:""}; return {code:u.code||"",title:u.title||""}; }
+function unitLabel(u){ u = normU(u); return u.code + (u.title ? " — " + u.title : ""); }
+// 표 칸에는 제목까지 넣으면 너무 넓어져서 코드만
+function unitCode(u){ return normU(u).code; }
+
+function syncUrl(){
+  const q = new URLSearchParams();
+  if (SID) q.set("student_id", SID);
+  q.set("days", DAYS);
+  if (TEACHER) q.set("teacher", TEACHER);
+  try { history.replaceState(null, "", "?" + q.toString()); } catch(e){}
+}
+function markSeg(){
+  document.querySelectorAll("#seg button").forEach(b => b.classList.toggle("on", +b.dataset.d === DAYS));
+}
+
+// ── 학생 목록 ──
+async function loadStudents(){
+  try {
+    const r = await fetch("/api/attendance?action=students" + TQ);
+    const d = await r.json(); if (!r.ok) throw new Error(d.error);
+    const list = (d.students || []).filter(s => s.status === "재원");
+    if (!list.length){
+      $("#stu").innerHTML = '<option value="">재원 학생이 없어요</option>';
+      $("#out").innerHTML = '<div class="card empty">재원 학생이 없어요 — <a href="/students.html">학생 관리</a> 에서 먼저 등록해 주세요.</div>';
+      return;
+    }
+    $("#stu").innerHTML = '<option value="">학생 고르기…</option>' + list.map(s =>
+      `<option value="${esc(s.id)}"${s.id===SID?" selected":""}>${esc(s.name)}${s.grade?" ("+esc(s.grade)+")":""}</option>`).join("");
+    if (!SID){ SID = list[0].id; $("#stu").value = SID; }   // 안 고르고 들어오면 첫 학생
+  } catch(e){ $("#msg").textContent = e.message; }
+}
+
+async function load(){
+  if (!SID){ $("#out").innerHTML = '<div class="muted">학생을 고르면 이력이 열립니다.</div>'; return; }
+  syncUrl(); markSeg();
+  $("#msg").textContent = ""; $("#out").innerHTML = '<div class="muted">불러오는 중…</div>';
+  try {
+    const r = await fetch(`/api/attendance?action=student-history&student_id=${encodeURIComponent(SID)}&days=${DAYS}`);
+    const d = await r.json(); if (!r.ok) throw new Error(d.error);
+    DATA = d; OPEN = false;
+    render();
+  } catch(e){ $("#out").innerHTML = ""; $("#msg").textContent = e.message; }
+}
+
+const PER = () => (DAYS === 7 ? "1주" : DAYS === 30 ? "1달" : "3달");
+
+function profileHtml(){
+  const s = DATA.student, bk = s.books || {};
+  const books = Object.keys(bk).filter(k => bk[k]).map(k => `${esc(k)} <b>${esc(bk[k])}</b>`).join(" · ");
+  // 요일은 jsonb 키 순서(들쭉날쭉)가 아니라 월~일 순으로 — "금수월" 처럼 보이지 않게
+  const sch = ["월","화","수","목","금","토","일"].filter(k => (s.schedule || {})[k]).join("");
+  document.title = `학생 카드 — ${s.name}`;
+  return `<div class="card"><div class="profile">
+      <span class="nm">${esc(s.name)}</span>
+      ${s.grade?`<span class="kv">학년 <b>${esc(s.grade)}</b></span>`:""}
+      ${s.school?`<span class="kv">학교 <b>${esc(s.school)}</b></span>`:""}
+      ${s.teacher?`<span class="kv">담당 <b>${esc(s.teacher)}</b></span>`:""}
+      ${sch?`<span class="kv">수업 요일 <b>${esc(sch)}</b></span>`:""}
+      ${s.student_code?`<span class="kv">학생ID <b>${esc(s.student_code)}</b></span>`:""}
+    </div>${books?`<div class="sub" style="margin-top:6px">📘 ${books}</div>`:""}</div>`;
+}
+
+// 📊 과목별 진도 흐름 — 같은 진도가 이어진 날은 하나로 묶고 ×횟수
+function flowHtml(){
+  const rows = DATA.rows.slice().reverse();   // 오래된 것부터
+  if (!rows.length) return "";
+  const flows = DATA.subjects.map(sub => {
+    const seg = [];
+    rows.forEach(r => {
+      const v = unitLabel((r.progress || {})[sub]); if (!v) return;
+      const last = seg[seg.length - 1];
+      if (last && last.v === v) last.n++;
+      else seg.push({ v, d: r.date, n: 1 });
+    });
+    if (!seg.length) return "";
+    return `<div class="flow"><span class="k">${esc(sub)}</span><span class="v">` + seg.map(x =>
+      `<span class="st"><small>${esc(md(x.d))}${x.n>1?" ×"+x.n:""}</small>${esc(x.v)}</span>`
+    ).join('<span class="ar">→</span>') + `</span></div>`;
+  }).filter(Boolean).join("");
+  if (!flows) return "";
+  return `<div class="card"><div class="ttl">📊 과목별 진도 (최근 ${PER()} · 수업 ${rows.length}번)</div>`
+    + `<div class="sub">같은 진도가 이어진 날은 묶음(×횟수) — <b>×가 큰 칸이 멈춘 자리</b>예요</div>${flows}</div>`;
+}
+
+// 📅 진도 표 — 날짜 × 과목. 바로 앞 수업과 같은 칸은 흐리게.
+function tableHtml(){
+  const R = DATA.rows;   // 최신이 앞
+  if (!R.length) return "";
+  const subs = DATA.subjects;
+  const trs = R.map((r, i) => {
+    const older = R[i + 1];
+    const cell = (sub) => {
+      const v = unitCode((r.progress || {})[sub]);
+      if (!v) return '<td class="same">-</td>';
+      const same = older && unitCode((older.progress || {})[sub]) === v;
+      return `<td${same ? ' class="same"' : ""}>${esc(v)}</td>`;
+    };
+    const vt = r.voca_test
+      ? `<span class="${isFail(r.voca_test) ? "bad" : "ok"}">${esc(r.voca_test)}</span>`
+        + (r.voca_score ? ` <span class="same">${esc(r.voca_score)}</span>` : "")
+      : "";
+    const t = r.tasks;
+    const hw = t ? `<span class="ok">✓${t.done}</span>` + (t.undone ? ` <span class="bad">✗${t.undone}</span>` : "") : "";
+    const att = r.lateness && r.lateness !== "정시" && r.lateness !== "정시등원"
+      ? ` <span class="bad">${esc(r.lateness)}</span>` : "";
+    return `<tr><td class="dt">${esc(dateLabel(r.date))}${att}</td>`
+      + subs.map(cell).join("")
+      + `<td>${vt}</td><td>${hw}</td><td>${esc(r.attitude || "-")}</td><td>${esc(r.homework || "-")}</td></tr>`;
+  }).join("");
+  return `<div class="card"><div class="ttl">📅 진도 표</div>`
+    + `<div class="sub">바로 앞 수업과 같은 칸은 흐리게 · 과제는 ✓완료 ✗미완료 개수</div>`
+    + `<div class="ptwrap"><table class="pt"><thead><tr><th>날짜</th>`
+    + subs.map(x => `<th>${esc(x)}</th>`).join("")
+    + `<th>단어 TEST</th><th>과제</th><th>태도</th><th>과제등급</th></tr></thead><tbody>${trs}</tbody></table></div></div>`;
+}
+
+// 날짜별 자세히 — 진도(제목까지) · 단어TEST · 과제 목록 · 메모
+function ln(k, v){ return v ? `<div class="ln"><span class="k">${k}</span><span>${v}</span></div>` : ""; }
+function daysHtml(){
+  const R = OPEN ? DATA.rows : DATA.rows.slice(0, 5);
+  if (!R.length) return '<div class="card empty">이 기간에 수업 기록이 없어요.</div>';
+  const body = R.map(r => {
+    const pills = [
+      r.lateness ? `<span class="pill${/지각|결석/.test(r.lateness) ? " late" : " ok"}">${esc(r.lateness)}</span>` : "",
+      r.check_in ? `<span class="pill">🕒 ${esc(r.check_in)}${r.check_out ? "~" + esc(r.check_out) : ""}</span>` : "",
+      r.report_sent === "전송" ? '<span class="pill ok">카톡 전송</span>' : "",
+      // 재시 대상 판정은 서버(lib/retest.js) — 「불통과」 또는 점수 기준 미달.
+      //   노션에서 옮겨와 큐를 안 거친 행도 needs_retest 로 잡힙니다.
+      (r.retest_sent === "미전송" || (r.needs_retest && r.retest_sent !== "전송"))
+        ? '<span class="pill late">🔁 재시 안내 대기</span>' : "",
+      r.retest_sent === "전송" ? '<span class="pill ok">🔁 재시 안내 전송</span>' : "",
+    ].join("");
+    const prog = DATA.subjects.filter(s => (r.progress||{})[s])
+      .map(s => `${esc(s)} ${esc(unitLabel(r.progress[s]))}`).join(" · ");
+    const vt = r.voca_test
+      ? `<span class="${isFail(r.voca_test) ? "bad" : "ok"}">${esc(r.voca_test)}</span>${r.voca_score ? " " + esc(r.voca_score) : ""}`
+      : "";
+    const tk = r.tasks
+      ? r.tasks.items.map(x => `${x.done ? '<span class="ok">✓</span>' : '<span class="bad">✗</span>'} [${esc(x.kind)}] ${esc(x.title)}`).join("<br>")
+      : "";
+    const memo = [
+      r.note ? "지적: " + esc(r.note) : "",
+      r.parent_note ? "학부모 전달: " + esc(r.parent_note) : "",
+    ].filter(Boolean).join("<br>");
+    const lines = ln("📖 진도", prog) + ln("✏️ 단어TEST", vt) + ln("📚 과제", tk)
+      + ln("🎒 태도/과제", [r.attitude && "태도 " + esc(r.attitude), r.homework && "과제 " + esc(r.homework)].filter(Boolean).join(" · "))
+      + ln("📝 메모", memo);
+    return `<div class="day"><div class="dhead"><span class="dt">${esc(dateLabel(r.date))}</span>${pills}</div>${lines}</div>`;
+  }).join("");
+  const more = DATA.rows.length > 5
+    ? `<button class="btn" style="width:100%" onclick="OPEN=!OPEN;render()">${OPEN ? "▲ 접기" : `▼ 더 보기 (${DATA.rows.length}번 전부)`}</button>`
+    : "";
+  return `<div class="card" style="padding:12px 16px"><div class="ttl">🗒 날짜별 자세히 (최근 ${PER()})</div>`
+    + `<div class="sub" style="margin-bottom:0">진도 제목 · 단어테스트 · 학생이 체크한 과제 · 메모</div></div>${body}${more}`;
+}
+
+function render(){
+  if (!DATA) return;
+  $("#toDaily").href = "/daily.html" + (TEACHER ? "?teacher=" + encodeURIComponent(TEACHER) : "");
+  // 기록이 없거나 한 줄뿐이면 "고장난 건지 비어 있는 건지" 를 구분해 줍니다.
+  // 샘플은 설치일 기준 지난 두 달치라 1주로 보면 비어 보일 수 있습니다 — 그 자리에서 해결책을 알려 줍니다.
+  const thin = DATA.rows.length <= 1 ? `<div class="card" style="background:#fff8e6;border-color:#f0dca8;color:#8a5d0f">`
+      + `보여줄 지난 수업이 ${DATA.rows.length}번뿐이에요. <b>고장난 게 아닙니다</b> — 아직 기록이 쌓이지 않은 거예요.<br>`
+      + `· 기간을 <b>3달</b>로 넓혀 보세요.<br>`
+      + `· 설치 직후라 <b>샘플</b>로 보고 계시면, Supabase <b>SQL Editor</b> 에서 <code>sql/test_3_month.sql</code> 을 Run 하면 `
+      + `<b>지난달 한 달치</b>가 채워져 이 화면이 제대로 보입니다.</div>` : "";
+  if (!DATA.rows.length){ $("#out").innerHTML = profileHtml() + thin; return; }
+  $("#out").innerHTML = profileHtml() + thin + flowHtml() + tableHtml() + daysHtml();
+}
+
+$("#stu").addEventListener("change", (e) => { SID = e.target.value; load(); });
+document.querySelectorAll("#seg button").forEach(b =>
+  b.addEventListener("click", () => { DAYS = +b.dataset.d; load(); }));
+$("#reload").onclick = load;
+
+(async () => { markSeg(); await loadStudents(); load(); })();
+</script>
+</body>
+</html>

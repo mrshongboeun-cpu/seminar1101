@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>학생앱</title>
+  <!-- 학생이 폰으로 여는 화면. 과제 체크 + 내 진도 + 최근 리포트 + 월말평가서.
+       로그인은 학생ID(student_code) + 출결번호(PIN) — 2차 세미나 때부터 쓰던 값 그대로. -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap');
+    :root { --green: #1f7a70; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Noto Sans KR', -apple-system, sans-serif; background: #f5f6fa; color: #333; min-height: 100vh; }
+    .header { background: var(--green); color: #fff; padding: 22px 20px; text-align: center; }
+    .header h1 { font-size: 17px; font-weight: 600; opacity: .9; }
+    .header .who { font-size: 23px; font-weight: 700; margin-top: 6px; }
+    .header .sub { font-size: 12px; opacity: .8; margin-top: 4px; }
+    .content { max-width: 560px; margin: 0 auto; padding: 18px 16px 60px; }
+
+    .card { background: #fff; border-radius: 14px; padding: 18px; margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,.05); }
+    .card h2 { font-size: 15px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 7px; }
+    .card .hint { font-size: 12px; color: #999; margin-bottom: 14px; }
+
+    /* 과제 체크리스트 */
+    .task { display: flex; align-items: flex-start; gap: 12px; padding: 13px 12px; border: 1.5px solid #eee; border-radius: 11px; margin-bottom: 9px; cursor: pointer; transition: .15s; }
+    .task:active { transform: scale(.99); }
+    .task.done { background: #f7faf9; border-color: #dfeeec; }
+    .task .box { width: 24px; height: 24px; border: 2px solid #ccc; border-radius: 7px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #fff; }
+    .task.done .box { background: var(--green); border-color: var(--green); }
+    .task .t { flex: 1; }
+    .task .title { font-size: 14px; font-weight: 500; line-height: 1.45; }
+    .task.done .title { color: #9aa; text-decoration: line-through; }
+    .task .meta { font-size: 11px; color: #999; margin-top: 4px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .tag { background: #eef4f3; color: #4a7c75; border-radius: 5px; padding: 1px 6px; font-weight: 500; }
+    .tag.home { background: #fff3e0; color: #b1731f; }
+    .tag.late { background: #fdecea; color: #c0392b; }
+
+    .pbar { height: 7px; background: #eee; border-radius: 99px; overflow: hidden; margin: 2px 0 14px; }
+    .pbar > i { display: block; height: 100%; background: var(--green); border-radius: 99px; transition: width .35s; }
+    .cheer { font-size: 13px; font-weight: 600; color: var(--green); margin-bottom: 12px; }
+    /* 집과제 / 학원과제 묶음 — 아이가 집에서 열면 위쪽(집)만 보면 되게 */
+    .grp { margin-bottom: 18px; }
+    .grp:last-child { margin-bottom: 0; }
+    .grp > h3 { font-size: 13.5px; font-weight: 700; margin: 0 0 3px; display: flex; align-items: center; gap: 6px; }
+    .grp.home > h3 { color: #b1731f; }
+    .grp.acad > h3 { color: #4a7c75; }
+    .grp > h3 .n { margin-left: auto; font-size: 12px; font-weight: 600; color: #999; }
+    .grp.home .pbar > i { background: #e0922f; }
+
+    /* 진도 */
+    .prog { display: flex; align-items: center; gap: 11px; padding: 11px 12px; background: #f8f9fb; border-radius: 10px; margin-bottom: 8px; }
+    .prog .s { background: var(--green); color: #fff; font-size: 11px; font-weight: 600; border-radius: 6px; padding: 3px 8px; flex-shrink: 0; }
+    .prog .b { font-size: 13px; font-weight: 500; }
+    .prog .u { font-size: 11px; color: #888; margin-top: 2px; }
+
+    /* 최근 기록 */
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { padding: 8px 6px; text-align: center; border-bottom: 1px solid #f2f2f2; }
+    th { color: #999; font-weight: 500; font-size: 11px; }
+    td.d { text-align: left; color: #666; white-space: nowrap; }
+    .ok { color: #2e9e6b; font-weight: 600; } .no { color: #d9534f; font-weight: 600; }
+
+    .rlink { display: flex; align-items: center; justify-content: space-between; padding: 12px; border: 1.5px solid #eee; border-radius: 10px; margin-bottom: 8px; text-decoration: none; color: #333; font-size: 14px; font-weight: 500; }
+    .rlink span { color: var(--green); font-size: 12px; }
+
+    .empty { text-align: center; color: #aaa; font-size: 13px; padding: 22px 0; }
+
+    /* 로그인 */
+    .login { background: #fff; border-radius: 16px; padding: 30px 24px; margin-top: 44px; box-shadow: 0 4px 20px rgba(0,0,0,.07); text-align: center; }
+    .login .ic { font-size: 42px; margin-bottom: 10px; }
+    .login .t { font-size: 18px; font-weight: 700; }
+    .login .d { font-size: 13px; color: #888; margin: 6px 0 20px; line-height: 1.5; }
+    .login label { display: block; text-align: left; font-size: 12px; color: #777; margin-bottom: 5px; }
+    .login input { width: 100%; padding: 13px; border: 2px solid #e5e5e5; border-radius: 11px; font-size: 16px; font-family: inherit; margin-bottom: 12px; }
+    .login input:focus { outline: none; border-color: var(--green); }
+    .btn { width: 100%; padding: 14px; background: var(--green); color: #fff; border: none; border-radius: 11px; font-size: 16px; font-weight: 600; font-family: inherit; cursor: pointer; }
+    .err { color: #d9534f; font-size: 13px; margin-top: 10px; min-height: 16px; }
+    .logout { display: block; margin: 0 auto; background: none; border: none; color: #aaa; font-size: 12px; font-family: inherit; cursor: pointer; text-decoration: underline; }
+    .toast { position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%) translateY(120px); background: #333; color: #fff; padding: 11px 22px; border-radius: 10px; font-size: 13px; z-index: 300; transition: transform .3s, visibility 0s .3s; visibility: hidden; }
+    .toast.show { transform: translateX(-50%) translateY(0);  visibility: visible; transition: transform .3s; }
+  </style>
+  <script src="/config.js"></script>
+</head>
+<body>
+  <div class="header">
+    <h1><span data-academy></span> 학생앱</h1>
+    <div class="who" id="who">—</div>
+    <div class="sub" id="sub"></div>
+  </div>
+
+  <div class="content">
+    <!-- 로그인 -->
+    <div class="login" id="loginCard">
+      <div class="ic">🎒</div>
+      <div class="t">학생 로그인</div>
+      <div class="d">학원에서 받은 <b>학생ID</b>와 <b>출결번호</b>를 넣어주세요.<br>(키오스크에서 쓰는 그 번호예요)</div>
+      <label>학생ID</label>
+      <input id="code" autocapitalize="off" autocomplete="username" placeholder="예: demo01">
+      <label>출결번호</label>
+      <input id="pin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="숫자 4자리"
+             onkeyup="if(event.key==='Enter')login()">
+      <button class="btn" onclick="login()">들어가기</button>
+      <div class="err" id="err"></div>
+    </div>
+
+    <!-- 홈 -->
+    <div id="home" style="display:none">
+      <div class="card">
+        <h2>✅ 오늘 할 일</h2>
+        <div class="hint" id="taskHint">탭하면 체크돼요. 선생님 화면에 바로 보입니다. <b>🏠 집에서 할 것</b>부터 하면 돼요.</div>
+        <div id="tasks"></div>
+      </div>
+
+      <div class="card">
+        <h2>📖 내 진도</h2>
+        <div class="hint">오늘 수업 기준이에요 (수업 없는 날이면 마지막 수업).</div>
+        <div id="prog"></div>
+      </div>
+
+      <div class="card">
+        <h2>📝 최근 수업 기록</h2>
+        <div class="hint">선생님이 적어주신 내용이에요.</div>
+        <div id="recent"></div>
+      </div>
+
+      <div class="card">
+        <h2>📄 월말평가서</h2>
+        <div class="hint">부모님께 보내드린 평가서를 여기서도 볼 수 있어요.</div>
+        <div id="reports"></div>
+      </div>
+
+      <button class="logout" onclick="logout()">로그아웃</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+  // 로그인 정보는 이 폰에만 저장한다(localStorage). 서버에 세션을 두지 않아 구조가 단순하다.
+  var KEY = 'studentApp';
+  var me = null, auth = null;
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+    return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+  function $(id) { return document.getElementById(id); }
+  function toast(m) { var t = $('toast'); t.textContent = m; t.classList.add('show'); setTimeout(function () { t.classList.remove('show'); }, 1800); }
+
+  async function api(action, extra) {
+    var body = Object.assign({ action: action }, auth || {}, extra || {});
+    var res = await fetch('/api/student', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error || '오류가 났어요.');
+    return data;
+  }
+
+  async function login() {
+    var code = $('code').value.trim(), pin = $('pin').value.trim();
+    if (!code || !pin) { $('err').textContent = '학생ID와 출결번호를 모두 넣어주세요.'; return; }
+    auth = { code: code, pin: pin };
+    try {
+      var d = await api('login');
+      me = d.me;
+      localStorage.setItem(KEY, JSON.stringify(auth));
+      $('err').textContent = '';
+      showHome();
+    } catch (e) { auth = null; $('err').textContent = e.message; }
+  }
+
+  function logout() { localStorage.removeItem(KEY); location.reload(); }
+
+  async function showHome() {
+    $('loginCard').style.display = 'none';
+    $('home').style.display = '';
+    $('who').textContent = me.name + ' 학생';
+    $('sub').textContent = [me.grade, me.teacher ? me.teacher + ' 선생님' : ''].filter(Boolean).join(' · ');
+    await load();
+  }
+
+  async function load() {
+    var d = await api('home');
+    me = d.me;
+    renderTasks(d.tasks);
+    renderProgress(d.progress);
+    renderRecent(d.recent);
+    renderReports(d.reports);
+  }
+
+  // 과제 한 줄
+  function taskHtml(t) {
+    // 묶음 제목이 집/학원을 이미 말해주므로, 줄마다 또 붙이지 않습니다 (과목만)
+    var tags = t.subject ? '<span class="tag">' + esc(t.subject) + '</span>' : '';
+    if (t.overdue) tags += '<span class="tag late">밀린 과제 · ' + esc(t.date.slice(5)) + '</span>';
+    return '<div class="task' + (t.done ? ' done' : '') + '" onclick="toggle(\'' + t.id + '\',' + (!t.done) + ')">'
+      + '<div class="box">✓</div><div class="t"><div class="title">' + esc(t.title) + '</div>'
+      + (tags ? '<div class="meta">' + tags + '</div>' : '') + '</div></div>';
+  }
+
+  // 한 묶음 (집 또는 학원) — 진행률을 **묶음마다 따로** 셉니다.
+  //   합쳐서 세면, 집에서 아무리 다 해도 학원과제가 남아 100% 가 안 됩니다.
+  //   아이 입장에선 "다 했는데 왜 67%" 가 되어서 체크할 맛이 안 나요.
+  function groupHtml(cls, icon, name, where, list) {
+    if (!list.length) return '';
+    var done = list.filter(function (t) { return t.done; }).length;
+    var pct = Math.round(done / list.length * 100);
+    var cheer = pct === 100 ? (name === '집' ? '집 거 다 했어요! 최고 👏' : '다 했어요! 👏')
+                            : (done + ' / ' + list.length + ' 완료');
+    return '<div class="grp ' + cls + '">'
+      + '<h3>' + icon + ' ' + where + '<span class="n">' + cheer + '</span></h3>'
+      + '<div class="pbar"><i style="width:' + pct + '%"></i></div>'
+      + list.map(taskHtml).join('') + '</div>';
+  }
+
+  function renderTasks(tasks) {
+    var box = $('tasks');
+    if (!tasks.length) {
+      box.innerHTML = '<div class="empty">오늘 낸 과제가 없어요 🎉</div>';
+      return;
+    }
+    // 집 / 학원 두 묶음으로. **집을 위에** — 아이가 집에서 여니까요.
+    var home = tasks.filter(function (t) { return t.kind === '집'; });
+    var acad = tasks.filter(function (t) { return t.kind !== '집'; });
+    box.innerHTML = groupHtml('home', '🏠', '집', '집에서 할 것', home)
+                  + groupHtml('acad', '🏫', '학원', '학원에서 할 것', acad);
+  }
+
+  async function toggle(id, done) {
+    try { await api('toggle-task', { task_id: id, done: done }); await load(); if (done) toast('체크했어요!'); }
+    catch (e) { toast(e.message); }
+  }
+
+  function renderProgress(list) {
+    $('prog').innerHTML = list.length ? list.map(function (p) {
+      return '<div class="prog"><div class="s">' + esc(p.subject) + '</div><div>'
+        + '<div class="b">' + esc(p.book || '교재 미지정') + '</div>'
+        + '<div class="u">' + esc(p.unit || '진도 없음') + '</div></div></div>';
+    }).join('') : '<div class="empty">아직 진도 기록이 없어요.</div>';
+  }
+
+  // 날짜를 MM-DD 로. 서버가 '2026-10-27' 로 주든 ISO 로 주든 둘 다 되게
+  //   (학생카드 student_card.html 의 md() 와 같은 방식)
+  function md(d) { return String(d || '').slice(0, 10).slice(5); }
+
+  function renderRecent(rows) {
+    if (!rows.length) { $('recent').innerHTML = '<div class="empty">아직 수업 기록이 없어요.</div>'; return; }
+    $('recent').innerHTML = '<table><tr><th>날짜</th><th>등원</th><th>태도</th><th>과제</th><th>단어</th></tr>'
+      + rows.map(function (r) {
+          var v = r.voca_test ? '<span class="' + (r.voca_test === '통과' ? 'ok' : 'no') + '">' + esc(r.voca_test) + '</span>'
+                  + (r.voca_score ? '<br><span style="color:#aaa;font-size:10px">' + esc(r.voca_score) + '</span>' : '') : '-';
+          return '<tr><td class="d">' + esc(md(r.date)) + '</td><td>' + esc(r.lateness || '-') + '</td>'
+            + '<td>' + esc(r.attitude || '-') + '</td><td>' + esc(r.homework || '-') + '</td><td>' + v + '</td></tr>';
+        }).join('') + '</table>';
+  }
+
+  function renderReports(list) {
+    $('reports').innerHTML = list.length ? list.map(function (r) {
+      return '<a class="rlink" href="' + esc(r.url) + '" target="_blank">' + esc(r.month) + ' 월말평가서 <span>열기 →</span></a>';
+    }).join('') : '<div class="empty">아직 평가서가 없어요.</div>';
+  }
+
+  // 저장된 로그인으로 자동 입장
+  (async function () {
+    var saved = localStorage.getItem(KEY);
+    if (!saved) return;
+    try {
+      auth = JSON.parse(saved);
+      var d = await api('login');
+      me = d.me;
+      await showHome();
+    } catch (e) { localStorage.removeItem(KEY); auth = null; }
+  })();
+</script>
+</body>
+</html>

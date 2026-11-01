@@ -1,0 +1,7 @@
+node_modules
+.vercel
+.env
+.env.*
+.DS_Store
+attendance-report/scripts/verify/node_modules
+attendance-report/scripts/verify/app.log

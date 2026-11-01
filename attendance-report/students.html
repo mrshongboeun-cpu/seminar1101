@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>학생 관리</title>
+<style>
+  :root { --line:#e5e2da; --ink:#1f2328; --muted:#6b7280; --green:#1f7a70; --bg:#faf9f6; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
+  header { padding:16px 20px; border-bottom:1px solid var(--line); background:#fff; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
+  h1 { margin:0; font-size:19px; } nav a { font-size:13px; color:var(--muted); text-decoration:none; margin-left:12px; }
+  /* 학교 칸이 늘면서 960px 로는 가로 스크롤이 생겼습니다. 화면만큼 넓게 쓰되
+     너무 퍼지지 않게 1400px 까지만 (노트북 1280 에서도 한 화면에 들어옵니다). */
+  main { max-width:1400px; margin:0 auto; padding:20px; }
+  .bar { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+  button { padding:8px 14px; border:1px solid var(--green); background:var(--green); color:#fff; border-radius:8px; cursor:pointer; font-size:14px; }
+  button.ghost { background:#fff; color:var(--green); }
+  table { width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  th,td { text-align:left; padding:9px 8px; border-bottom:1px solid var(--line); font-size:13.5px; }
+  /* 등원시간은 제일 긴 칸이라 조금 작게 — 그래야 나머지가 안 밀립니다 */
+  td.times { font-size:12.5px; color:#555; }
+  th { background:#f3f1ec; font-size:13px; color:var(--muted); white-space:nowrap; }
+  /* 학교 칸이 늘면서 좁아졌습니다 — 칸 제목과 담당 선생님이 두 줄로 쪼개지지 않게 */
+  tr:hover td { background:#faf9f6; cursor:pointer; }
+  .overlay { position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; padding:16px; }
+  .overlay.on { display:flex; }
+  .panel { background:#fff; border-radius:14px; padding:20px; width:100%; max-width:560px; max-height:92vh; overflow:auto; }
+  label { display:block; font-size:13px; font-weight:600; margin:10px 0 4px; }
+  input, select, textarea { width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:8px; font-size:14px; font-family:inherit; }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  /* 요일은 **일곱 칸**입니다 — 주말 수업하는 학원이 많고, 붙여넣기·샘플도 토·일을 씁니다.
+     예전엔 월~금만 있어서 **화면으로는 주말을 넣을 수가 없었습니다.** */
+  .days { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; }
+  .days label { text-align:center; margin:0 0 2px; font-size:12px; }
+  .days input { padding:7px 4px; text-align:center; font-size:13px; }
+  .days > div:nth-child(6) label { color:#2f6f6a; }   /* 토 */
+  .days > div:nth-child(7) label { color:#c0392b; }   /* 일 */
+  .actions { display:flex; gap:8px; margin-top:16px; }
+  .err { color:#cf6a4a; font-size:13px; }
+  .muted { color:var(--muted); font-size:12px; }
+  /* 교재명이 교재DB에 없을 때 — 진도가 안 넘어가는 제일 흔한 원인이라 그 자리에서 알려줍니다 */
+  .panel select[data-book] { width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px;
+                            font-size:13px; background:#fff; color:#222; }
+  .bookwarn { font-size:12px; line-height:1.6; color:#8a5d0f; background:#fff8e6; border:1px solid #f0dca8;
+              border-radius:7px; padding:7px 9px; margin-top:8px; display:none; }
+  .bookwarn.on { display:block; }
+</style>
+<script src="/config.js"></script>
+</head>
+<body>
+<header>
+  <h1><span data-academy></span> 👥 학생 관리</h1>
+  <nav><a href="/" title="홈으로">🏠 홈</a><a href="/board.html">현황판</a><a href="/daily.html">데일리 리포트</a><a href="/kiosk.html">키오스크</a><a href="/student_card.html">학생 카드</a><a href="/books.html">교재</a><a href="/report.html">월말평가서</a></nav>
+</header>
+<main>
+  <div class="bar">
+    <button id="add">+ 학생 추가</button>
+    <button class="ghost" id="bulkBtn">붙여넣기 일괄등록</button>
+  </div>
+  <div id="msg" class="err"></div>
+  <!-- 출결PIN 중복 알림 — 키오스크가 PIN 만으로 학생을 찾기 때문에 겹치면 등원이 안 됩니다 -->
+  <div id="pinDup" style="display:none;margin:10px 0;padding:12px 14px;border:1px solid #e3b7a8;background:#fdf3ef;border-radius:8px;line-height:1.7;font-size:13px"></div>
+  <div style="overflow-x:auto">
+  <table><thead><tr><th>이름</th><th>학생ID</th><th>학년</th><th>학교</th><th>PIN</th><th>담당</th><th>등원시간</th><th>연락처</th><th>이력</th></tr></thead>
+  <tbody id="rows"></tbody></table>
+  </div>
+</main>
+
+<div class="overlay" id="overlay"><div class="panel">
+  <h2 id="title" style="margin:0 0 6px;font-size:18px">학생</h2>
+  <div class="row2">
+    <div><label>이름 *</label><input id="f_name"></div>
+    <div><label>학생ID <span class="muted">(노션 이관용, 선택)</span></label><input id="f_code" placeholder="예: nauta01"></div>
+  </div>
+  <div class="row2">
+    <div><label>학년</label>
+      <select id="f_grade_sel"></select>
+      <input id="f_grade" class="직접칸" placeholder="직접 입력 (예: 중2)" style="display:none;margin-top:6px"></div>
+    <div><label>학교</label>
+      <select id="f_school_sel"></select>
+      <input id="f_school" class="직접칸" placeholder="직접 입력 (예: 새봄중학교)" style="display:none;margin-top:6px"></div>
+  </div>
+  <div class="row2">
+    <div><label>담당 선생님</label>
+      <select id="f_teacher_sel"></select>
+      <input id="f_teacher" class="직접칸" placeholder="직접 입력" style="display:none;margin-top:6px"></div>
+    <div><label>출결 PIN</label><input id="f_pin" inputmode="numeric" placeholder="4자리"></div>
+  </div>
+  <div class="row2">
+    <div><label>재원상태</label><select id="f_status"><option value="재원">재원</option><option value="퇴원">퇴원</option></select></div>
+    <div><label>수업시간(분)</label><input id="f_min" inputmode="numeric" placeholder="120"></div>
+  </div>
+  <label>학부모 연락처</label><input id="f_phone" placeholder="01000000000">
+  <label>요일별 등원시간 (없는 날은 비움)</label>
+  <div class="days">
+    <div><label>월</label><input data-day="월" placeholder="17:00"></div>
+    <div><label>화</label><input data-day="화"></div>
+    <div><label>수</label><input data-day="수"></div>
+    <div><label>목</label><input data-day="목"></div>
+    <div><label>금</label><input data-day="금"></div>
+    <div><label>토</label><input data-day="토"></div>
+    <div><label>일</label><input data-day="일"></div>
+  </div>
+  <label>교재 <span class="muted" style="font-weight:400">— <b>교재DB에 있는 것</b>에서 고르세요</span></label>
+  <div class="row2">
+    <div><label>문법</label><select data-book="문법"></select></div>
+    <div><label>리딩</label><select data-book="리딩"></select></div>
+  </div>
+  <div style="margin-top:8px"><label>단어</label><select data-book="단어"></select></div>
+  <div id="bookWarn" class="bookwarn"></div>
+  <div class="actions">
+    <button id="save">저장</button>
+    <button class="ghost" id="del" style="border-color:#cf6a4a;color:#cf6a4a">삭제</button>
+    <button class="ghost" id="close">닫기</button>
+  </div>
+</div></div>
+
+<div class="overlay" id="bulkOverlay"><div class="panel">
+  <h2 style="margin:0 0 6px;font-size:18px">붙여넣기 일괄등록</h2>
+  <p class="muted">구글시트·엑셀에서 <b>제목 줄까지 같이</b> 복사해 붙여넣으세요 (한 줄 = 한 명).<br>
+    제목 줄을 보고 칸을 알아서 맞춥니다 — <b>열 순서가 달라도 되고, 없는 열은 빼셔도 됩니다.</b></p>
+  <p class="muted">넣을 수 있는 제목: <code>이름</code> <code>학생ID</code> <code>출결PIN</code> <code>학년</code> <code>담당</code> <code>연락처</code>
+    <code>월</code> <code>화</code> <code>수</code> <code>목</code> <code>금</code> <code>토</code> <code>일</code>
+    <code>문법교재</code> <code>리딩교재</code> <code>단어교재</code> <code>수업시간</code></p>
+  <p class="muted">⚠️ <b>학생ID</b>는 학생앱 로그인(학생ID+PIN)에, <b>요일</b>은 그날 수업 여부 판단에,
+    <b>교재</b>는 진도 자동 전환에 씁니다. 요일이 비면 그 학생은 <b>데일리 리포트에 안 뜹니다.</b></p>
+  <div style="margin:8px 0"><button class="ghost" id="tplCsv">📄 시트 양식 받기 (CSV)</button>
+    <span class="muted" style="margin-left:6px">구글시트에서 열어 채운 뒤, 전체 복사해서 아래에 붙여넣으세요</span></div>
+  <textarea id="bulkText" rows="8" placeholder="이름&#9;학생ID&#9;출결PIN&#9;학년&#9;담당&#9;연락처&#9;월&#9;화&#9;수&#9;목&#9;금&#9;문법교재&#9;리딩교재&#9;단어교재&#10;김민준&#9;demo01&#9;1111&#9;중2&#9;이선생&#9;01000000001&#9;17:00&#9;&#9;17:00&#9;&#9;17:00&#9;그래머 인사이드 1&#9;리딩튜터 주니어 1&#9;능률 VOCA 입문"></textarea>
+  <div id="bulkPreview" class="muted" style="margin:6px 0"></div>
+  <div class="actions"><button id="bulkSave">등록</button><button class="ghost" id="bulkClose">닫기</button></div>
+</div></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+let editing = null;
+async function api(p){ const r=await fetch("/api/attendance",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)}); const d=await r.json(); if(!r.ok) throw new Error(d.error||"실패"); return d; }
+function esc(s){ return (s ?? "").replace(/[&<>]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+
+// 교재DB에 있는 교재명 — 학생의 교재 칸을 **고르게** 하려고 들고 있습니다.
+//   교재명이 교재DB와 한 글자라도 다르면 목차를 못 찾아서 **진도가 안 넘어갑니다.**
+//   손으로 치게 두면 반드시 어긋나요 (자료실 ㊻ 프롬프트가 그 뒷수습용이었습니다).
+let BOOKS = {};       // 과목 → [교재명]
+let ALLBOOKS = new Set();
+
+async function loadBooks(){
+  try{
+    const r = await fetch("/api/attendance?action=textbooks");
+    const d = await r.json(); if(!r.ok) return;
+    BOOKS = {}; ALLBOOKS = new Set();
+    for(const t of (d.textbooks||[])){
+      if(!t.name) continue;
+      (BOOKS[t.subject||""] = BOOKS[t.subject||""] || []).push(t.name);
+      ALLBOOKS.add(t.name);
+    }
+  }catch(e){ /* 교재를 못 불러와도 학생 관리는 돌아가야 합니다 */ }
+}
+
+// ── 고르는 칸: 학년 · 학교 · 담당 선생님 ──────────────────────────
+// 왜 고르게 하나: 손으로 칠 때마다 「이선생 / 이 선생 / 이선생님」 처럼 조금씩
+//   달라지면 담당별 보기가 갈라지고, 학교도 「새봄중 / 새봄중학교」 로 흩어집니다.
+//   그래서 **이미 쓰고 있는 값**을 모아 고르게 하고, 없는 건 「+ 직접 입력」 으로 넣습니다.
+//
+// ★ 지금 값이 목록에 없어도 **지우지 않습니다** — 노션에서 옮겨왔거나 예전에 손으로
+//   친 값이 저장만 눌렀다고 날아가면 안 됩니다 (교재 칸과 같은 규칙).
+const 직접 = "__직접__";
+// 학년은 학원마다 같습니다 — DB 에 있는 것과 합쳐서 보여줍니다.
+const 기본학년 = ["초1","초2","초3","초4","초5","초6","중1","중2","중3","고1","고2","고3"];
+let 고를것 = { grades: [], schools: [], teachers: [] };
+
+async function 고를것불러오기(){
+  try{
+    const r = await fetch("/api/attendance?action=teachers");
+    const d = await r.json(); if(!r.ok) return;
+    고를것 = { grades: d.grades||[], schools: d.schools||[], teachers: d.teachers||[] };
+  }catch(e){ /* 못 불러와도 「직접 입력」 으로 넣을 수 있어야 합니다 */ }
+}
+
+// sel = <select>, inp = 직접 입력칸, 목록 = 고를 값들, 지금 = 저장돼 있던 값
+function 고르는칸그리기(selId, inpId, 목록, 지금, 없음라벨){
+  const sel = $(selId), inp = $(inpId);
+  const 값들 = [...new Set([...목록, ...(지금 ? [지금] : [])])].filter(Boolean);
+  sel.innerHTML = `<option value="">${없음라벨}</option>`
+    + 값들.map(v=>`<option value="${esc(v)}"${v===지금?" selected":""}>${esc(v)}</option>`).join("")
+    + `<option value="${직접}">+ 직접 입력…</option>`;
+  inp.value = ""; inp.style.display = "none";
+  sel.onchange = () => {
+    const 직접인가 = sel.value === 직접;
+    inp.style.display = 직접인가 ? "" : "none";
+    if (직접인가) inp.focus();
+  };
+}
+// 저장할 때 — 「직접 입력」 을 골랐으면 적은 값을, 아니면 고른 값을
+function 고른값(selId, inpId){
+  const v = $(selId).value;
+  return (v === 직접 ? $(inpId).value.trim() : v);
+}
+
+// 교재 드롭다운을 그립니다. **지금 값**은 교재DB에 없어도 고른 채로 남겨둡니다
+//   (노션에서 옮겨왔거나 교재를 아직 안 만든 분의 값이 지워지면 안 되니까요)
+function 교재칸그리기(){
+  for(const sub of ["문법","리딩","단어"]){
+    const el = document.querySelector(`[data-book="${sub}"]`); if(!el) continue;
+    const 지금 = el.dataset.cur || "";
+    const mine = BOOKS[sub] || [];
+    const rest = [...ALLBOOKS].filter(n => !mine.includes(n));   // 과목을 안 적어둔 교재도 고를 수 있게
+    const 목록 = [...mine, ...rest];
+    const 없는값 = 지금 && !ALLBOOKS.has(지금);
+    // 빈 칸 글자에 **과목**을 넣습니다 — 셋이 나란히 있으면 어느 게 어느 과목인지
+    //   「- 교재 없음 -」 만 보고는 알 수가 없습니다 (라벨이 가려지는 좁은 화면에서도).
+    el.innerHTML = `<option value="">- ${sub} 교재 없음 -</option>`
+      + (없는값 ? `<option value="${esc(지금)}" selected>${esc(지금)} (교재DB에 없음)</option>` : "")
+      + 목록.map(n => `<option value="${esc(n)}"${n===지금?" selected":""}>${esc(n)}</option>`).join("")
+      + `<option value="__new__">+ 직접 입력…</option>`;
+  }
+  checkBooks();
+}
+
+// 「+ 직접 입력…」 — 교재를 아직 안 만드신 분도 학생부터 넣을 수 있게 남겨둔 길
+document.addEventListener("change", (e)=>{
+  const el = e.target;
+  if(!el.dataset || el.dataset.book===undefined) return;
+  if(el.value === "__new__"){
+    const v = (prompt("교재명을 적어주세요.\n(교재DB에 없는 이름이면 진도가 저절로 안 넘어갑니다)", el.dataset.cur||"")||"").trim();
+    el.dataset.cur = v;
+    교재칸그리기();
+    return;
+  }
+  el.dataset.cur = el.value;
+  checkBooks();
+});
+
+// 교재DB에 없는 이름을 적었으면 그 자리에서 알려줍니다 (막지는 않습니다 —
+// 교재를 아직 안 만든 분도 학생부터 넣을 수 있어야 하니까요)
+function checkBooks(){
+  const box = $("#bookWarn"); if(!box) return;
+  const 없는것 = [];
+  document.querySelectorAll("[data-book]").forEach(i=>{
+    const v = (i.dataset.cur || "").trim();
+    if(v && ALLBOOKS.size && !ALLBOOKS.has(v)) 없는것.push(v);
+  });
+  if(!없는것.length){ box.classList.remove("on"); box.innerHTML=""; return; }
+  box.classList.add("on");
+  box.innerHTML = `⚠️ <b>교재DB에 없는 이름</b>이에요: ${없는것.map(esc).join(" · ")}<br>`
+    + `이대로 저장하면 <b>진도가 저절로 안 넘어갑니다</b> (목차를 못 찾아서요). `
+    + `<a href="/books.html" target="_blank">교재</a> 에서 먼저 만드시거나, 칸을 눌러 목록에서 고르세요.`;
+}
+
+async function load(){
+  $("#msg").textContent="";
+  await Promise.all([loadBooks(), 고를것불러오기()]);
+  const r = await fetch("/api/attendance?action=students"); const d = await r.json();
+  if(!r.ok){ $("#msg").textContent=d.error; return; }
+  // ★ 같은 출결PIN 을 쓰는 학생이 있으면 **제일 위에** 띄웁니다.
+  //   키오스크는 PIN 만으로 학생을 찾습니다 — 겹치면 그 아이들은 등원이 안 되고,
+  //   모르고 있으면 세미나 당일 아침에야 드러납니다. 노션에서 옮겨온 PIN 이
+  //   샘플 학생의 PIN 과 겹치는 일이 자주 있습니다.
+  const dups = d.pin_dups || [];
+  $("#pinDup").innerHTML = dups.length
+    ? `<b>⚠️ 출결PIN이 겹치는 학생이 있어요</b><br>`
+      + dups.map(x=>`· PIN <b>${esc(x.pin)}</b> — ${esc(x.names.join(", "))}`).join("<br>")
+      + `<br><br>키오스크는 PIN만으로 학생을 찾기 때문에, 겹친 학생은 <b>등원·하원이 안 됩니다.</b>`
+      + `<br>아래 명단에서 한 명을 눌러 <b>다른 번호</b>로 바꿔주세요.`
+    : "";
+  $("#pinDup").style.display = dups.length ? "" : "none";
+  const body = $("#rows"); body.innerHTML="";
+  // ★ 학생이 하나도 없으면 — 요일·재원 문제가 아니라 **앱이 보는 DB 가 비어 있는** 것입니다.
+  //   제일 많은 원인은 「Supabase 에는 들어가 있는데 다른 프로젝트를 보고 있다」 입니다.
+  if (!(d.students || []).length) {
+    $("#msg").innerHTML = '🔴 <b>학생이 한 명도 없습니다.</b> 앱이 보고 있는 데이터베이스가 비어 있어요.<br>'
+      + '· Supabase <b>SQL Editor</b> 에서 <code>sql/setup.sql</code> 을 <b>끝까지</b> Run 했나요? (표 6개 + 샘플 학생 12명)<br>'
+      + '· Vercel 의 <b>SUPABASE_URL</b> 이 <b>그 프로젝트</b> 주소인가요? '
+      + '프로젝트가 여러 개면 다른 빈 프로젝트를 보고 있을 수 있어요 '
+      + '(Supabase → Settings → API 의 <b>Project URL</b> 과 글자까지 같아야 합니다).<br>'
+      + '· 환경변수를 고쳤으면 <b>Deployments → Redeploy</b> 를 눌러야 적용됩니다.<br>'
+      + '· 지금 앱이 뭘 보고 있는지는 <code>/api/attendance?action=students</code> 를 주소창에 열어보면 바로 보여요.';
+  }
+  const 겹친핀 = new Set(dups.map(x=>x.pin));
+  const DAYORD = ["월","화","수","목","금","토","일"];
+  for(const s of d.students){
+    // 요일별 등원시간: "월 17:00 · 수 17:00 · 금 17:00"
+    const times = DAYORD.filter(d0 => (s.schedule||{})[d0]).map(d0 => `${d0} ${s.schedule[d0]}`).join(" · ");
+    const quit = s.status && s.status !== "재원" ? ' <span style="font-size:11px;color:#cf6a4a">(퇴원)</span>' : "";
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td style="white-space:nowrap"><b>${esc(s.name)}</b>${quit}</td><td>${esc(s.student_code||"")}</td><td>${esc(s.grade||"")}</td><td style="white-space:nowrap">${esc(s.school||"")}</td><td>${겹친핀.has(String(s.pin||"").trim()) && s.status!=="퇴원" ? `<span style="color:#c0392b;font-weight:700" title="다른 학생과 겹칩니다 — 키오스크 등원이 안 됩니다">${esc(s.pin)} ⚠️</span>` : esc(s.pin||"")}</td><td style="white-space:nowrap">${esc(s.teacher||"")}</td><td class="times" style="white-space:nowrap">${esc(times)||'<span style="color:#9aa">-</span>'}</td><td>${esc(s.phone||"")}</td><td style="white-space:nowrap"><a href="/student_card.html?student_id=${encodeURIComponent(s.id)}" target="_blank" onclick="event.stopPropagation()" title="학생 카드 — 지난 진도 쭉 보기">📋</a></td>`;
+    tr.onclick = () => openForm(s);
+    body.appendChild(tr);
+  }
+}
+
+function openForm(s){
+  editing = s || null;
+  $("#title").textContent = s ? "학생 수정" : "학생 추가";
+  $("#f_name").value=s?.name||""; $("#f_code").value=s?.student_code||""; $("#f_pin").value=s?.pin||"";
+  $("#f_status").value=s?.status||"재원"; $("#f_phone").value=s?.phone||""; $("#f_min").value=s?.class_minutes||"";
+  고르는칸그리기("#f_grade_sel","#f_grade", [...기본학년, ...고를것.grades], s?.grade||"", "- 학년 고르기 -");
+  고르는칸그리기("#f_school_sel","#f_school", 고를것.schools, s?.school||"", "- 학교 고르기 -");
+  고르는칸그리기("#f_teacher_sel","#f_teacher", 고를것.teachers, s?.teacher||"", "- 담당 고르기 -");
+  document.querySelectorAll("[data-day]").forEach(i=> i.value=(s?.schedule||{})[i.dataset.day]||"");
+  document.querySelectorAll("[data-book]").forEach(i=> i.dataset.cur=(s?.books||{})[i.dataset.book]||"");
+  교재칸그리기();
+  $("#del").style.display = s ? "" : "none";
+  $("#overlay").classList.add("on");
+}
+$("#add").onclick = () => openForm(null);
+$("#close").onclick = () => $("#overlay").classList.remove("on");
+$("#save").onclick = async () => {
+  const schedule={}; document.querySelectorAll("[data-day]").forEach(i=>{ if(i.value.trim()) schedule[i.dataset.day]=i.value.trim(); });
+  const books={}; document.querySelectorAll("[data-book]").forEach(i=>{ const v=(i.dataset.cur||"").trim(); if(v) books[i.dataset.book]=v; });
+  const student = { id:editing?.id, name:$("#f_name").value.trim(), student_code:$("#f_code").value.trim(),
+    grade:고른값("#f_grade_sel","#f_grade"), school:고른값("#f_school_sel","#f_school"),
+    teacher:고른값("#f_teacher_sel","#f_teacher"),
+    pin:$("#f_pin").value.trim(),
+    status:$("#f_status").value, phone:$("#f_phone").value.trim(), class_minutes:$("#f_min").value.trim(), schedule, books };
+  try{ await api({action:"save-student", student}); $("#overlay").classList.remove("on"); load(); }catch(e){ alert(e.message); }
+};
+$("#del").onclick = async () => {
+  if(!editing || !confirm(`${editing.name} 학생을 삭제할까요?`)) return;
+  try{ await api({action:"delete-student", id:editing.id}); $("#overlay").classList.remove("on"); load(); }catch(e){ alert(e.message); }
+};
+$("#bulkBtn").onclick = () => $("#bulkOverlay").classList.add("on");
+$("#bulkClose").onclick = () => $("#bulkOverlay").classList.remove("on");
+// ── 붙여넣기 해석 ──────────────────────────────────────
+// 제목 줄이 있으면 **제목을 보고** 칸을 맞춥니다. 원장님마다 시트가 다르고
+// 요일·교재까지 넣으면 열이 16개라, 순서를 외우게 하는 건 현실적이지 않습니다.
+// 제목 줄이 없으면 예전 6열 순서(이름/학생ID/PIN/학년/담당/연락처)로 읽습니다.
+const DAYS_KO = ["월","화","수","목","금","토","일"];
+const HEAD = [
+  ["name",        ["이름","학생이름","성명","학생명"]],
+  ["student_code",["학생id","학생아이디","아이디","id","학생코드"]],
+  ["pin",         ["출결pin","pin","핀","출결번호","출결"]],
+  ["grade",       ["학년"]],
+  ["school",      ["학교","학교명","재학중인학교","출신학교"]],
+  ["teacher",     ["담당","담당선생님","선생님","담당강사","강사"]],
+  ["phone",       ["연락처","전화번호","학부모연락처","학부모","휴대폰","전화"]],
+  ["class_minutes",["수업시간","수업분","수업시간(분)"]],
+];
+const norm = (x) => String(x||"").trim().toLowerCase().replace(/[\s()·.\-_]/g,"");
+function headerKey(h){
+  const n = norm(h);
+  if(!n) return null;
+  for(const [key,alias] of HEAD) if(alias.some(a=>norm(a)===n)) return key;
+  for(const d of DAYS_KO) if(n===norm(d)||n===norm(d+"요일")||n===norm(d+"등원시간")||n===norm(d+"-등원시간")) return "day:"+d;
+  for(const sub of ["문법","리딩","단어"]){
+    if(n===norm(sub)||n===norm(sub+"교재")) return "book:"+sub;
+  }
+  if(n===norm("어휘")||n===norm("어휘교재")) return "book:단어";
+  return null;
+}
+function parseBulk(text){
+  const lines = text.trim().split(/\r?\n/).filter(l=>l.trim());
+  if(!lines.length) return { rows:[], headed:false };
+  const first = lines[0].split("\t").map(x=>(x||"").trim());
+  const keys = first.map(headerKey);
+  // 제목 줄로 보려면 「이름」이 잡히고, 알아본 칸이 2개 이상이어야 합니다
+  const headed = keys.includes("name") && keys.filter(Boolean).length >= 2;
+  const body = headed ? lines.slice(1) : lines;
+  // 제목 줄이 없을 때의 순서는 **예전 그대로** 둡니다 — 여기에 학교를 끼워 넣으면
+  //   이미 그 순서로 쓰시던 분들의 칸이 통째로 밀립니다. 학교는 제목 줄로만 받습니다.
+  const order = headed ? keys : ["name","student_code","pin","grade","teacher","phone"];
+  const rows = body.map(line=>{
+    const c = line.split("\t").map(x=>(x||"").trim());
+    const r = { schedule:{}, books:{} };
+    order.forEach((k,i)=>{
+      const v = c[i]; if(!k || !v) return;
+      if(k.startsWith("day:")) r.schedule[k.slice(4)] = v;
+      else if(k.startsWith("book:")) r.books[k.slice(5)] = v;
+      else r[k] = v;
+    });
+    return r;
+  }).filter(r=>r.name);
+  return { rows, headed, unknown: headed ? first.filter((h,i)=>h && !keys[i]) : [] };
+}
+// 붙여넣는 동안 "몇 명 / 어떤 칸이 잡혔는지" 를 바로 보여줍니다 (잘못 붙여넣는 걸 그 자리에서 알게)
+$("#bulkText").addEventListener("input", ()=>{
+  const p = parseBulk($("#bulkText").value);
+  const el = $("#bulkPreview");
+  if(!p.rows.length){ el.textContent = ""; return; }
+  const withDay = p.rows.filter(r=>Object.keys(r.schedule).length).length;
+  const withBook = p.rows.filter(r=>Object.keys(r.books).length).length;
+  el.innerHTML = `읽은 학생 <b>${p.rows.length}명</b>`
+    + (p.headed ? " · 제목 줄 인식됨" : " · 제목 줄 없음 → 이름/학생ID/PIN/학년/담당/연락처 순서로 읽음")
+    + ` · 요일 들어간 학생 ${withDay}명 · 교재 들어간 학생 ${withBook}명`
+    + (p.unknown && p.unknown.length ? `<br><span style="color:#cf6a4a">못 알아본 제목: ${p.unknown.join(", ")} (이 칸은 건너뜁니다)</span>` : "");
+});
+
+// 📄 시트 양식 받기 — 구글시트에 올려 채우고 다시 복사해 오시면 됩니다
+$("#tplCsv").onclick = () => {
+  const head = ["이름","학생ID","출결PIN","학년","학교","담당","연락처",...DAYS_KO,"문법교재","리딩교재","단어교재"];
+  const sample = [
+    ["김민준","demo01","1111","중2","새봄중학교","이선생","010-0000-0001","17:00","","17:00","","17:00","","","그래머 인사이드 1","리딩튜터 주니어 1","능률 VOCA 입문"],
+    ["이서연","demo02","2222","중3","푸른중학교","이선생","010-0000-0002","18:00","18:00","","18:00","","","","그래머 인사이드 2","리딩튜터 주니어 2","능률 VOCA 실력"],
+  ];
+  const csv = [head, ...sample].map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(",")).join("\r\n");
+  const blob = new Blob(["\uFEFF"+csv], { type:"text/csv;charset=utf-8" });  // BOM — 엑셀에서 한글이 안 깨지게
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "학생명단_양식.csv"; a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  // 바로 지우면 브라우저가 파일 이름을 못 읽고 "download" 로 저장하는 일이 있습니다
+  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 1500);
+};
+
+$("#bulkSave").onclick = async () => {
+  const parsed = parseBulk($("#bulkText").value);
+  const rows = parsed.rows;
+  if(!rows.length) return alert("붙여넣은 내용이 없어요.");
+  // 학생ID 가 빈 줄이 있으면 먼저 알려준다 (모르고 넘어가면 학생앱이 안 됨)
+  const noCode = rows.filter(r=>!r.student_code).map(r=>r.name);
+  if(noCode.length && !confirm(
+      `학생ID가 비어 있는 학생이 ${noCode.length}명 있어요: ${noCode.slice(0,5).join(", ")}${noCode.length>5?" 외":""}\n\n`
+      + `학생ID가 없으면 그 학생은 학생앱(student.html)에 로그인할 수 없습니다.\n`
+      + `제목 줄에 「학생ID」 칸을 넣으면 함께 등록됩니다.\n\n`
+      + `이대로 등록할까요?`)) return;
+  // ★ 출결PIN 도 같이 짚습니다. PIN 이 없으면 **키오스크 등하원도** 안 됩니다
+  //   (학생앱 로그인은 학생ID + PIN 둘 다 필요). 예전엔 학생ID 만 알려줬습니다.
+  const noPin = rows.filter(r=>!r.pin).map(r=>r.name);
+  if(noPin.length && !confirm(
+      `출결PIN이 비어 있는 학생이 ${noPin.length}명 있어요: ${noPin.slice(0,5).join(", ")}${noPin.length>5?" 외":""}\n\n`
+      + `출결PIN이 없으면 그 학생은 키오스크로 등원·하원을 할 수 없고, 학생앱에도 로그인할 수 없습니다.\n`
+      + `제목 줄에 「출결PIN」 칸을 넣고 4자리 숫자를 적으면 같이 들어갑니다.\n\n`
+      + `이대로 등록할까요?`)) return;
+  // ★ 붙여넣은 명단 안에서 PIN 이 겹치면 — 키오스크는 PIN 만으로 학생을 찾기 때문에
+  //   겹치면 엉뚱한 학생으로 등원되고 그 집에 카톡이 갑니다. 서버도 막지만 여기서 먼저 알립니다.
+  const pins = rows.map(r=>String(r.pin||"").trim()).filter(Boolean);
+  const dupPin = [...new Set(pins.filter((p,i)=>pins.indexOf(p)!==i))];
+  if(dupPin.length){
+    alert(`붙여넣은 명단 안에서 출결PIN이 겹칩니다: ${dupPin.join(", ")}\n\n`
+      + `키오스크는 PIN만으로 학생을 찾기 때문에 겹치면 엉뚱한 학생으로 등원되고,\n`
+      + `그 학생 집으로 등원 카톡이 갑니다.\n\n시트에서 고쳐 다시 붙여넣어 주세요.`);
+    return;
+  }
+  // 요일이 하나도 없으면 데일리 리포트에 안 뜹니다 — 조용히 넘어가면 안 되는 자리
+  const noDay = rows.filter(r=>!Object.keys(r.schedule||{}).length).map(r=>r.name);
+  if(noDay.length && !confirm(
+      `요일별 등원시간이 비어 있는 학생이 ${noDay.length}명 있어요: ${noDay.slice(0,5).join(", ")}${noDay.length>5?" 외":""}\n\n`
+      + `요일이 비면 그 학생은 데일리 리포트에 아예 나오지 않습니다(그날 수업인지 알 수 없어서).\n`
+      + `제목 줄에 「월 화 수 목 금」 칸을 넣고 등원시간을 적으면 같이 들어갑니다.\n\n`
+      + `이대로 등록할까요?`)) return;
+  try{
+    const d=await api({action:"bulk-students", rows});
+    $("#bulkOverlay").classList.remove("on"); $("#bulkText").value=""; $("#bulkPreview").textContent="";
+    alert(`${d.count}명 등록됐어요.`); load();
+  }catch(e){ alert(e.message); }
+};
+load();
+</script>
+</body>
+</html>

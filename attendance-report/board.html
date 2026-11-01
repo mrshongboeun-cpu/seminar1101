@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>출결 현황판</title>
+<style>
+  :root {
+    --bg:#0e1116; --surface:#161b24; --surface2:#1b212c; --line:#252c3a;
+    --text:#e6e9ef; --dim:#8b95a5; --dim2:#5f6b7d;
+    --green:#35c08b; --green-bg:rgba(53,192,139,.12);
+    --amber:#f5a623; --amber-bg:rgba(245,166,35,.12);
+    --red:#e0455e; --red-bg:rgba(224,69,94,.12);
+    --gray:#6b7688; --live:#35c08b;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
+  a { color:inherit; }
+  .wrap { max-width:1500px; margin:0 auto; padding:18px 20px 60px; }
+  header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:16px; }
+  .htitle { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  h1 { margin:0; font-size:22px; font-weight:800; }
+  .live { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:800; color:var(--live);
+    background:var(--green-bg); border:1px solid rgba(53,192,139,.3); padding:4px 10px; border-radius:999px; }
+  .live .dot { width:8px; height:8px; border-radius:50%; background:var(--live); animation:pulse 1.6s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .btn { border:1px solid var(--line); background:var(--surface2); color:var(--text);
+    padding:8px 14px; border-radius:9px; cursor:pointer; font-size:13px; font-family:inherit; }
+  .btn:hover { border-color:var(--dim2); }
+  .btn.amber { border-color:rgba(245,166,35,.4); color:var(--amber); }
+  .clock { text-align:right; }
+  .clock .t { font-size:30px; font-weight:800; letter-spacing:1px; font-variant-numeric:tabular-nums; }
+  .clock .d { font-size:12px; color:var(--dim); margin-top:2px; }
+  nav { font-size:12px; color:var(--dim); margin-top:4px; }
+  nav a { text-decoration:none; margin-right:12px; color:var(--dim); }
+  nav a:hover, nav a.on { color:var(--green); }
+  /* stat tiles */
+  .stats { display:grid; grid-template-columns:repeat(7,1fr); gap:10px; margin-bottom:16px; }
+  @media(max-width:1100px){ .stats{ grid-template-columns:repeat(4,1fr); } }
+  @media(max-width:560px){ .stats{ grid-template-columns:repeat(2,1fr); } }
+  .tile { background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:14px 16px; }
+  .tile .l { font-size:12px; color:var(--dim); }
+  .tile .v { font-size:28px; font-weight:800; margin-top:4px; font-variant-numeric:tabular-nums; }
+  .tile.study .v { color:var(--green); } .tile.absent .v { color:var(--text); }
+  .tile.late .v { color:var(--amber); } .tile.soon .v { color:var(--amber); }
+  .tile.out .v { color:var(--dim); } .tile.miss .v { color:var(--red); }
+  /* toolbar */
+  .toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; }
+  .chip { border:1px solid var(--line); background:var(--surface); color:var(--dim); padding:7px 14px;
+    border-radius:999px; cursor:pointer; font-size:13px; font-weight:600; }
+  .chip.on { background:#2a5bd7; border-color:#2a5bd7; color:#fff; }
+  .chip.tea.on { background:var(--surface2); border-color:var(--green); color:var(--green); }
+  /* card grid */
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:14px; cursor:pointer;
+    transition:transform .08s, border-color .1s; position:relative; }
+  .card:hover { transform:translateY(-2px); }
+  .card.study { border-color:rgba(53,192,139,.5); background:linear-gradient(180deg,var(--green-bg),var(--surface)); }
+  .card.soon  { border-color:rgba(245,166,35,.5); }
+  .card.late  { border-color:rgba(245,166,35,.35); }
+  .card.miss  { border-color:rgba(224,69,94,.4); }
+  .card.out   { opacity:.55; }
+  .chead { display:flex; align-items:center; gap:7px; margin-bottom:2px; }
+  .cdot { width:8px; height:8px; border-radius:50%; background:var(--dim2); flex:none; }
+  .card.study .cdot, .card.soon .cdot { background:var(--green); }
+  .card.late .cdot { background:var(--amber); } .card.miss .cdot { background:var(--red); }
+  .card.out .cdot { background:var(--gray); }
+  .cname { font-size:16px; font-weight:800; }
+  .badge { font-size:10px; font-weight:800; padding:2px 6px; border-radius:6px; margin-left:auto; }
+  .badge.bogang { background:var(--amber-bg); color:var(--amber); }
+  .cteacher { font-size:11.5px; color:var(--dim); margin-bottom:10px; }
+  .trow { display:flex; gap:8px; }
+  .tbox { flex:1; background:var(--surface2); border-radius:9px; padding:7px 9px; text-align:center; }
+  .tbox .k { font-size:10px; color:var(--dim2); }
+  .tbox .v { font-size:15px; font-weight:800; margin-top:2px; font-variant-numeric:tabular-nums; }
+  .tbox .v.warn { color:var(--amber); }
+  .co-btn { width:100%; margin-top:10px; padding:8px; border-radius:9px; border:1px solid var(--line);
+    background:transparent; color:var(--dim); font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .co-btn:hover { border-color:var(--green); color:var(--green); }
+  .co-btn.miss { border-color:rgba(224,69,94,.4); color:var(--red); }
+  .statusline { font-size:12px; color:var(--dim); margin-top:2px; }
+  .late-tag { font-size:11px; font-weight:800; color:var(--amber); }
+  .empty { color:var(--dim); text-align:center; padding:50px 0; }
+  .err { color:var(--red); font-size:13px; margin-bottom:10px; }
+  /* editor */
+  .overlay { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; padding:16px; z-index:50; }
+  .overlay.on { display:flex; }
+  .panel { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:22px; width:100%; max-width:420px; }
+  .panel h2 { margin:0 0 4px; font-size:19px; }
+  .panel .meta { color:var(--dim); font-size:13px; }
+  label { display:block; font-size:13px; font-weight:700; color:var(--dim); margin:14px 0 6px; }
+  textarea { width:100%; padding:9px 11px; border:1px solid var(--line); border-radius:9px; font-size:14px;
+    font-family:inherit; background:var(--surface2); color:var(--text); resize:vertical; }
+  .seg { display:flex; gap:6px; }
+  .seg button { flex:1; padding:9px; border:1px solid var(--line); background:var(--surface2); color:var(--text);
+    border-radius:9px; cursor:pointer; font-size:14px; }
+  .seg button.on { background:var(--green); color:#04120c; border-color:var(--green); font-weight:800; }
+  .actions { display:flex; gap:8px; margin-top:20px; flex-wrap:wrap; }
+  .actions .primary { background:var(--green); color:#04120c; border:none; padding:10px 16px; border-radius:9px; cursor:pointer; font-weight:800; }
+  .actions .ghost { background:transparent; border:1px solid var(--line); color:var(--text); padding:10px 16px; border-radius:9px; cursor:pointer; }
+</style>
+<script src="/config.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="htitle">
+        <h1><span data-academy></span> 출결 현황판</h1>
+        <span class="live"><span class="dot"></span> LIVE</span>
+        <button class="btn" id="reload">🔄 새로고침</button>
+        <button class="btn amber" id="notifyAbsent">미등원 알림톡</button>
+      </div>
+      <nav>
+        <a href="/" title="홈으로">🏠 홈</a><a href="/board.html" class="on">현황판</a><a href="/daily.html">데일리 리포트</a>
+        <a href="/kiosk.html">키오스크</a><a href="/students.html">학생관리</a>
+        <a href="/student_card.html">학생 카드</a>
+        <a href="/books.html">교재</a><a href="/report.html">월말평가서</a>
+      </nav>
+    </div>
+    <div class="clock">
+      <div class="t" id="clock">--:--</div>
+      <div class="d" id="today">—</div>
+    </div>
+  </header>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="toolbar">
+    <div class="chips" id="tabs"></div>
+    <div class="chips" id="teachers"></div>
+  </div>
+
+  <div id="msg" class="err" style="display:none"></div>
+  <div id="board"><div class="empty">불러오는 중…</div></div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="panel">
+    <h2 id="eName"></h2>
+    <div class="meta" id="eMeta"></div>
+    <!-- 📋 학생 카드 — 지난 진도·테스트·과제를 기간으로 쭉 (현황판에서 바로 열어보게) -->
+    <div class="meta" style="margin-top:4px"><a id="eCard" href="/student_card.html" target="_blank">📋 학생 카드 — 지난 진도 보기 →</a></div>
+    <label>지각/결석</label>
+    <div class="seg" data-field="lateness">
+      <button data-v="정시">정시</button><button data-v="지각">지각</button><button data-v="결석">결석</button>
+    </div>
+    <label>메모 (내부)</label>
+    <textarea id="eNote" rows="2" placeholder="특이사항 (자세한 기록은 데일리 리포트에서)"></textarea>
+    <div class="actions">
+      <button class="primary" id="saveBtn">저장</button>
+      <button class="ghost" id="checkoutBtn">하원 처리</button>
+      <button class="ghost" id="closeBtn">닫기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+let STUDENTS = [], TAB = "전체", TEACHER = "전체", current = null, EMPTY = null;
+const TABS = ["전체","수업중","미등원","결석","하원"];
+
+async function api(payload){
+  const res = await fetch("/api/attendance", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
+  const d = await res.json(); if (!res.ok) throw new Error(d.error || "실패"); return d;
+}
+function esc(s){ return (s ?? "").replace(/[&<>]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+function kstNow(){ return new Date(Date.now() + 9*3600*1000); }
+
+// 시계 (KST)
+function tickClock(){
+  const n = kstNow();
+  const hh = String(n.getUTCHours()).padStart(2,"0"), mm = String(n.getUTCMinutes()).padStart(2,"0");
+  $("#clock").textContent = `${hh} : ${mm}`;
+  const wd = "일월화수목금토"[n.getUTCDay()];
+  $("#today").textContent = `${n.getUTCFullYear()}.${String(n.getUTCMonth()+1).padStart(2,"0")}.${String(n.getUTCDate()).padStart(2,"0")} ${wd}요일`;
+}
+setInterval(tickClock, 1000); tickClock();
+
+// 상태 → CSS 클래스
+function cardClass(status){
+  if (status==="수업중") return "study";
+  if (status==="곧 하원") return "soon";
+  if (status==="지각 미등원") return "late";
+  if (status==="미등원") return "miss";
+  if (status==="결석") return "out";
+  if (status==="하원") return "out";
+  return "";
+}
+
+async function load(){
+  try {
+    const res = await fetch("/api/attendance?action=board");
+    const d = await res.json(); if (!res.ok) throw new Error(d.error);
+    $("#msg").style.display = "none";
+    STUDENTS = d.students || [];
+    EMPTY = d.empty || null;   // 비었을 때 서버가 알려준 이유
+    renderStats(d.stats||{});
+    renderTeachers();
+    render();
+  } catch(e){ $("#board").innerHTML=""; $("#msg").style.display="block"; $("#msg").textContent = e.message; }
+}
+
+function renderStats(s){
+  const tiles = [
+    ["오늘 예정","오늘예정",""], ["수업중","수업중","study"], ["미등원","미등원","absent"],
+    ["지각 미등원","지각미등원","late"], ["곧 하원","곧하원","soon"], ["결석","결석","miss"], ["하원 완료","하원완료","out"],
+  ];
+  $("#stats").innerHTML = tiles.map(([l,k,c]) =>
+    `<div class="tile ${c}"><div class="l">${l}</div><div class="v">${s[k]||0}</div></div>`).join("");
+}
+
+function renderTabs(){
+  $("#tabs").innerHTML = TABS.map(t =>
+    `<button class="chip${TAB===t?" on":""}" onclick="setTab('${t}')">${t}</button>`).join("");
+}
+window.setTab = (t) => { TAB = t; renderTabs(); render(); };
+
+function renderTeachers(){
+  const set = [...new Set(STUDENTS.map(s=>s.teacher).filter(Boolean))];
+  $("#teachers").innerHTML = ["전체",...set].map(t =>
+    `<button class="chip tea${TEACHER===t?" on":""}" onclick="setTeacher('${esc(t).replace(/'/g,"\\'")}')">${t==="전체"?"전체":esc(t)}</button>`).join("");
+}
+window.setTeacher = (t) => { TEACHER = t; renderTeachers(); render(); };
+
+function matchTab(s){
+  if (TAB==="전체") return true;
+  if (TAB==="수업중") return s.status==="수업중" || s.status==="곧 하원";
+  if (TAB==="미등원") return s.status==="미등원" || s.status==="지각 미등원";
+  if (TAB==="결석") return s.status==="결석";
+  if (TAB==="하원") return s.status==="하원";
+  return true;
+}
+
+function render(){
+  renderTabs();
+  const order = { "지각 미등원":0, "곧 하원":1, "수업중":2, "미등원":3, "결석":4, "하원":5 };
+  let list = STUDENTS.filter(matchTab).filter(s => TEACHER==="전체" || s.teacher===TEACHER);
+  list.sort((a,b)=> (order[a.status]-order[b.status]) || (a.scheduled||"").localeCompare(b.scheduled||"") || a.name.localeCompare(b.name));
+  if (!list.length){
+    // ★ 전체가 비었으면 서버가 **왜** 비었는지 알려줍니다 (학생 0명 / 재원 0명 / 그 요일에 없음).
+    //   탭·담당 때문에 걸러진 것과 **DB가 비어 있는 것**은 전혀 다른 문제인데,
+    //   예전에는 둘 다 「해당하는 학생이 없어요」 한 줄이었습니다.
+    const 전체비었나 = !STUDENTS.length;
+    if (전체비었나 && EMPTY) {
+      const 말 = esc(EMPTY.message).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+      $("#board").innerHTML = '<div class="empty" style="text-align:left;max-width:620px;margin:40px auto;line-height:1.8">'
+        + (EMPTY.kind === "요일없음" ? "" : "🔴 ") + '<b>' + 말 + '</b>'
+        + (EMPTY.kind === "학생없음"
+            ? '<br><br>· 환경변수를 고쳤으면 <b>Deployments → Redeploy</b> 를 눌러야 적용됩니다.'
+              + '<br>· Supabase 프로젝트가 여러 개면 <b>다른 빈 프로젝트</b>를 보고 있을 수 있어요.'
+            : '<br><br>· <a href="/students.html">학생 관리</a> 에서 고칠 수 있어요.')
+        + '</div>';
+      return;
+    }
+    $("#board").innerHTML = '<div class="empty">해당하는 학생이 없어요.</div>'; return;
+  }
+  $("#board").innerHTML = '<div class="grid">' + list.map(cardHtml).join("") + '</div>';
+}
+
+function cardHtml(s){
+  const c = cardClass(s.status);
+  const r = s.record || {};
+  const arrived = s.status==="수업중" || s.status==="곧 하원" || s.status==="하원";
+  let body;
+  if (arrived){
+    const endLabel = s.status==="하원" ? "하원" : "예상 하원";
+    const endVal = s.status==="하원" ? (r.check_out||"-") : (s.expected_end||"-");
+    body = `<div class="trow">
+        <div class="tbox"><div class="k">등원</div><div class="v">${esc(r.check_in||"-")}</div></div>
+        <div class="tbox"><div class="k">${endLabel}</div><div class="v${s.status==="곧 하원"?" warn":""}">${esc(endVal)}</div></div>
+      </div>` + (s.status!=="하원" ? `<button class="co-btn" onclick="event.stopPropagation();checkout('${s.student_id}')">하원 처리</button>` : "");
+  } else if (s.status==="결석"){
+    body = `<div class="statusline">결석 처리됨</div>`;
+  } else {
+    // 미등원 / 지각 미등원
+    body = `<div class="trow">
+        <div class="tbox"><div class="k">예정시간</div><div class="v${s.status==="지각 미등원"?" warn":""}">${esc(s.scheduled||"-")}</div></div>
+        <div class="tbox"><div class="k">수업시간</div><div class="v">${s.class_minutes||"-"}분</div></div>
+      </div>` + (s.status==="지각 미등원" ? `<button class="co-btn miss" onclick="event.stopPropagation();notifyOne('${s.student_id}','${esc(s.name)}','${esc(s.scheduled||"")}')">미등원 알림 발송</button>` : "");
+  }
+  const late = r.lateness==="지각" ? '<span class="late-tag">지각</span>' : "";
+  return `<div class="card ${c}" onclick="openEditor('${s.student_id}')">
+    <div class="chead"><span class="cdot"></span><span class="cname">${esc(s.name)}</span>${late}</div>
+    <div class="cteacher">${esc(s.teacher||"")}${s.grade?(" · "+esc(s.grade)):""}</div>
+    ${body}
+  </div>`;
+}
+
+// 하원 처리 (카톡 안 보냄)
+window.checkout = async (id) => {
+  try { await api({ action:"checkout", student_id:id }); load(); }
+  catch(e){ alert(e.message); }
+};
+// 한 명 미등원 알림톡
+window.notifyOne = async (id, name, sched) => {
+  if (!confirm(`${name} 학부모에게 미등원 알림톡을 보낼까요?`)) return;
+  try { const d = await api({ action:"notify-absent" }); alert(`알림톡 ${d.sent}건 발송했어요.` + (d.sent===0?"\n(대상이 없거나 솔라피 미설정)":"")); }
+  catch(e){ alert(e.message); }
+};
+
+// 편집 오버레이
+function setSeg(field, value){
+  document.querySelectorAll(`.seg[data-field="${field}"] button`).forEach(b => b.classList.toggle("on", b.dataset.v === (value ?? "")));
+}
+function getSeg(field){ const on = document.querySelector(`.seg[data-field="${field}"] button.on`); return on ? on.dataset.v : null; }
+window.openEditor = (id) => {
+  const s = STUDENTS.find(x => x.student_id === id); if (!s) return;
+  current = s;
+  $("#eName").textContent = s.name;
+  $("#eMeta").textContent = `${s.teacher||""} · 예정 ${s.scheduled||"-"}${s.record?.check_in?(" · 등원 "+s.record.check_in):""}`;
+  $("#eCard").href = "/student_card.html?student_id=" + encodeURIComponent(s.student_id);
+  setSeg("lateness", s.record?.lateness || "정시");
+  $("#eNote").value = s.record?.note || "";
+  $("#overlay").classList.add("on");
+};
+document.querySelectorAll(".seg").forEach(seg =>
+  seg.addEventListener("click",(e)=>{ if (e.target.dataset.v !== undefined){ seg.querySelectorAll("button").forEach(b=>b.classList.remove("on")); e.target.classList.add("on"); } })
+);
+$("#closeBtn").onclick = () => $("#overlay").classList.remove("on");
+$("#saveBtn").onclick = async () => {
+  try { await api({ action:"save-record", student_id:current.student_id, fields:{ lateness:getSeg("lateness"), note:$("#eNote").value } }); $("#overlay").classList.remove("on"); load(); }
+  catch(e){ alert(e.message); }
+};
+$("#checkoutBtn").onclick = async () => {
+  try { await api({ action:"checkout", student_id:current.student_id }); $("#overlay").classList.remove("on"); load(); }
+  catch(e){ alert(e.message); }
+};
+$("#reload").onclick = load;
+$("#notifyAbsent").onclick = async () => {
+  if (!confirm("현재 미등원(지각) 학생의 학부모에게 알림톡을 보낼까요?")) return;
+  try { const d = await api({ action:"notify-absent" }); alert(`알림톡 ${d.sent}건 발송했어요.` + (d.sent===0?"\n(대상이 없거나 솔라피 미설정)":"")); }
+  catch(e){ alert(e.message); }
+};
+
+renderTabs();
+load();
+setInterval(load, 30000); // LIVE 자동 새로고침
+</script>
+</body>
+</html>

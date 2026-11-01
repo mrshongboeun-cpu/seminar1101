@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>노션 불러오기</title>
+<style>
+  :root { --line:#e5e2da; --ink:#1f2328; --muted:#6b7280; --green:#1f7a70; --bg:#faf9f6; --red:#cf6a4a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
+  header { padding:16px 20px; border-bottom:1px solid var(--line); background:#fff; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
+  h1 { margin:0; font-size:19px; } nav a { font-size:13px; color:var(--muted); text-decoration:none; margin-left:12px; }
+  main { max-width:720px; margin:0 auto; padding:20px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:18px 20px; margin-bottom:16px; }
+  .card h2 { font-size:15px; margin:0 0 10px; }
+  button { padding:10px 16px; border:1px solid var(--green); background:var(--green); color:#fff; border-radius:9px; cursor:pointer; font-size:14px; font-family:inherit; }
+  button.ghost { background:#fff; color:var(--green); }
+  button:disabled { opacity:.5; cursor:default; }
+  .muted { color:var(--muted); font-size:13px; line-height:1.7; }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .st { font-size:13px; padding:3px 10px; border-radius:999px; }
+  .st.ok { background:#e7f0ee; color:var(--green); } .st.no { background:#fbeee9; color:var(--red); }
+  label.ck { display:flex; gap:8px; align-items:center; font-size:14px; padding:8px 0; }
+  code { background:#f3f1ec; padding:1px 6px; border-radius:6px; font-size:12px; }
+  .log { white-space:pre-wrap; font-size:13px; background:#0e1116; color:#d7dbe3; border-radius:10px; padding:14px; margin-top:12px; min-height:40px; }
+  table { width:100%; border-collapse:collapse; margin-top:8px; }
+  td { padding:6px 8px; border-bottom:1px solid var(--line); font-size:13px; }
+</style>
+<script src="/config.js"></script>
+</head>
+<body>
+<header>
+  <h1><span data-academy></span> ⤵️ 노션 불러오기</h1>
+  <nav><a href="/" title="홈으로">🏠 홈</a><a href="/board.html">현황판</a><a href="/daily.html">데일리 리포트</a><a href="/students.html">학생관리</a><a href="/student_card.html">학생 카드</a><a href="/books.html">교재</a><a href="/report.html">월말평가서</a></nav>
+</header>
+<main>
+  <div class="card">
+    <h2>1. 준비 (Vercel 환경변수)</h2>
+    <p class="muted">
+      노션 <b>Integration</b>을 만들어 각 DB에 연결하고, Vercel 환경변수에 아래를 넣은 뒤 <b>재배포</b>하세요.<br>
+      <code>NOTION_TOKEN</code> · <code>NOTION_STUDENTS_DB</code>(전체학생DB) · <code>NOTION_DAILY_DB</code>(데일리리포트DB) · <code>NOTION_TEXTBOOKS_DB</code>(교재DB, 선택) · <code>NOTION_REPORTS_DB</code>(월말평가서DB, 선택)<br>
+      DB ID는 노션 DB 링크의 <code>notion.so/…/<b>여기32자</b>?v=…</code> 부분이에요.
+    </p>
+    <div class="row" style="margin-top:8px"><button id="checkBtn">연결 확인</button></div>
+    <div id="status" style="margin-top:12px"></div>
+  </div>
+
+  <div class="card">
+    <h2>2. 불러오기</h2>
+    <p class="muted">순서대로(교재 → 학생 → 데일리리포트) 이관됩니다. 같은 학생·날짜는 <b>덮어쓰기</b>(중복 안 생김). 여러 번 눌러도 안전해요.</p>
+    <label class="ck"><input type="checkbox" id="p_tb" checked> 교재DB</label>
+    <label class="ck"><input type="checkbox" id="p_stu" checked> 전체학생DB</label>
+    <label class="ck"><input type="checkbox" id="p_daily" checked> 데일리리포트DB</label>
+    <label class="ck"><input type="checkbox" id="p_reports" checked> 월말평가서DB <span class="muted">(이미 만든 평가서 보존, 선택)</span></label>
+    <label class="ck"><input type="checkbox" id="p_comments" checked> 월말참고사항DB <span class="muted">(선생님 코멘트, 선택)</span></label>
+    <div class="row" style="margin-top:8px"><button id="runBtn">노션에서 불러오기</button></div>
+    <div class="log" id="log">대기 중…</div>
+  </div>
+
+  <div class="card">
+    <h2>3. 속성명이 달라도 됩니다 (자동 탐지)</h2>
+    <p class="muted">
+      속성명이 학원마다 조금 달라도 <b>타입 + 키워드로 자동 매칭</b>해요. (예: "수업태도"도 태도로, "출석"도 지각으로 인식)<br>
+      우리 시스템에 꼭 필요한 건 <b>학생이름·날짜·태도·과제·지각·단어테스트·문법/리딩/단어진도·문법/리딩/단어교재</b> 정도예요.<br>
+      아래 <b>속성 확인</b>을 누르면 <b>실제 노션 속성명</b>과 <b>무엇으로 매칭됐는지</b>가 보입니다. 비어 있으면(<code>null</code>) 그 속성명만 알려주세요 — 바로 잡아드릴게요.
+    </p>
+    <div class="row" style="margin-top:8px"><button class="ghost" id="propsBtn">속성 확인</button></div>
+    <div class="log" id="propsLog" style="display:none"></div>
+  </div>
+</main>
+
+<script>
+const $ = (s) => document.querySelector(s);   // 다른 화면과 동일 (CSS 선택자 — 샵을 붙여 씁니다)
+async function checkNotion(){
+  $("#status").innerHTML = "<span class='muted'>확인 중…</span>";
+  try {
+    const r = await fetch("/api/import-notion?action=check");
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    const pill = (ok) => `<span class="st ${ok?'ok':'no'}">${ok?'연결됨':'미설정'}</span>`;
+    $("#status").innerHTML =
+      `<table>
+        <tr><td>NOTION_TOKEN</td><td>${pill(d.notion)}</td></tr>
+        <tr><td>전체학생DB</td><td>${pill(d.students_db)} ${d.counts.students!=null?('· '+d.counts.students+'건'):''}</td></tr>
+        <tr><td>데일리리포트DB</td><td>${pill(d.daily_db)} ${d.counts.daily!=null?('· '+d.counts.daily+'건'):''}</td></tr>
+        <tr><td>교재DB</td><td>${pill(d.textbooks_db)} ${d.counts.textbooks!=null?('· '+d.counts.textbooks+'건'):''}</td></tr>
+        <tr><td>월말평가서DB</td><td>${pill(d.reports_db)} ${d.counts.reports!=null?('· '+d.counts.reports+'건'):''}</td></tr>
+        <tr><td>월말참고사항DB</td><td>${pill(d.comments_db)} ${d.counts.comments!=null?('· '+d.counts.comments+'건'):''}</td></tr>
+      </table>`;
+  } catch(e){ $("#status").innerHTML = `<span class="st no">오류</span> <span class="muted">${e.message}</span>`; }
+}
+$("#checkBtn").onclick = checkNotion;
+$("#runBtn").onclick = async () => {
+  const parts = [];
+  if ($("#p_tb").checked) parts.push("textbooks");
+  if ($("#p_stu").checked) parts.push("students");
+  if ($("#p_daily").checked) parts.push("daily");
+  if ($("#p_reports").checked) parts.push("reports");
+  if ($("#p_comments").checked) parts.push("comments");
+  if (!parts.length){ $("#log").textContent = "불러올 항목을 하나 이상 선택하세요."; return; }
+  const btn = $("#runBtn"); btn.disabled = true; btn.textContent = "불러오는 중… (건수 많으면 수십 초)";
+  $("#log").textContent = "노션에서 읽는 중…";
+  try {
+    const r = await fetch("/api/import-notion", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ action:"run", parts }) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    $("#log").textContent =
+      `✅ 완료\n· 교재 ${d.textbooks}건\n· 학생 ${d.students}건\n· 데일리리포트 ${d.daily}건\n· 월말평가서 ${d.reports||0}건\n· 월말참고사항 ${d.comments||0}건` +
+      (d.warnings && d.warnings.length ? `\n\n⚠️ ${d.warnings.join("\n")}` : "") +
+      `\n\n이제 /report.html(월말평가서)·/daily.html 에서 확인하세요.`;
+  } catch(e){ $("#log").textContent = "오류: " + e.message; }
+  finally { btn.disabled = false; btn.textContent = "노션에서 불러오기"; }
+};
+$("#propsBtn").onclick = async () => {
+  const box = $("#propsLog"); box.style.display = "block"; box.textContent = "노션 속성 읽는 중…";
+  try {
+    const r = await fetch("/api/import-notion?action=props");
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    const fmt = (title, db) => {
+      if (!db) return "";
+      const props = Object.entries(db.properties||{}).map(([k,v])=>`  ${k} (${v})`).join("\n");
+      const matched = Object.entries(db.matched||{}).map(([k,v])=>{
+        if (v && typeof v === "object") v = Object.entries(v).map(([kk,vv])=>`${kk}=${vv||"∅"}`).join(", ");
+        return `  ${k} → ${v||"∅ 못 찾음"}`;
+      }).join("\n");
+      return `【${title}】\n· 실제 속성:\n${props}\n· 매칭 결과:\n${matched}\n`;
+    };
+    box.textContent = [fmt("학생DB",d.students), fmt("데일리리포트DB",d.daily), fmt("교재DB",d.textbooks), fmt("월말평가서DB",d.reports), fmt("월말참고사항DB",d.comments)].filter(Boolean).join("\n") || "설정된 DB가 없어요.";
+  } catch(e){ box.textContent = "오류: " + e.message; }
+};
+checkNotion();
+</script>
+</body>
+</html>

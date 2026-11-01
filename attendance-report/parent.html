@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>학습 리포트</title>
+  <!-- 2차/실사용 부모님 화면 이식: 출석·태도·단어·과제 4개 그래프 + 진도 + 본문 -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Noto Sans KR', -apple-system, sans-serif; background: #f5f6fa; color: #333; min-height: 100vh; }
+    .header { background: linear-gradient(135deg, #4a90d9 0%, #357abd 100%); color: white; padding: 24px; text-align: center; }
+    .header h1 { font-size: 20px; font-weight: 700; }
+    .header .student-name { font-size: 24px; font-weight: 700; margin-top: 8px; }
+    .content { max-width: 680px; margin: 0 auto; padding: 20px; }
+
+    .report-card { background: white; border-radius: 14px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); overflow: hidden; }
+    .report-header { padding: 18px 20px; cursor: pointer; display: flex; align-items: center; gap: 14px; }
+    .report-month { background: linear-gradient(135deg, #4a90d9, #357abd); color: white; width: 56px; height: 56px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; }
+    .report-month .year { font-size: 11px; opacity: 0.8; }
+    .report-month .month { font-size: 22px; font-weight: 700; line-height: 1; }
+    .report-info { flex: 1; }
+    .report-info .title { font-size: 15px; font-weight: 600; }
+    .report-info .date { font-size: 12px; color: #999; margin-top: 2px; }
+    .report-toggle { font-size: 20px; color: #ccc; transition: transform 0.3s; }
+    .report-card.open .report-toggle { transform: rotate(180deg); }
+
+    /* 차트 */
+    .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 16px 12px; }
+    .chart-box { background: #f8f9ff; border-radius: 10px; padding: 14px; text-align: center; }
+    .chart-box-title { font-size: 12px; font-weight: 600; color: #666; margin-bottom: 8px; }
+    .donut-wrap { position: relative; width: 120px; height: 120px; margin: 0 auto; }
+    .donut-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; }
+    .donut-center .num { font-size: 22px; font-weight: 700; }
+    .donut-center .unit { font-size: 9px; color: #888; }
+    .donut-legend { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 8px; font-size: 10px; color: #666; }
+
+    /* 진도 카드 */
+    .progress-section { padding: 12px 16px; }
+    .progress-section-title { font-size: 13px; font-weight: 600; color: #555; margin-bottom: 10px; }
+    .p-card { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; background: #f8f9ff; border-radius: 10px; margin-bottom: 8px; }
+    .p-card .p-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+    .p-card .p-icon.문법 { background: #e3f2fd; } .p-card .p-icon.리딩 { background: #e8f5e9; } .p-card .p-icon.단어 { background: #fff3e0; }
+    .p-card .p-title { font-size: 12px; font-weight: 600; }
+    .p-card .p-detail { font-size: 11px; color: #777; margin-top: 2px; }
+    .p-card .p-change { font-size: 10px; color: #4a90d9; margin-top: 3px; font-weight: 500; }
+
+    .transition-section { padding: 8px 16px 12px; }
+    .transition-badge { display: inline-flex; align-items: center; gap: 5px; background: #eef2ff; border: 1px solid #c5cae9; border-radius: 6px; padding: 5px 10px; font-size: 11px; color: #5c6bc0; margin: 3px; }
+    .transition-badge .arrow { font-weight: 700; }
+
+    .mini-stats { display: flex; gap: 6px; padding: 0 16px 14px; }
+    .mini-stat { flex: 1; background: #f8f9ff; border-radius: 8px; padding: 8px; text-align: center; }
+    .mini-stat .val { font-size: 14px; font-weight: 700; }
+    .mini-stat .val.good { color: #4caf50; } .mini-stat .val.warn { color: #ff9800; } .mini-stat .val.bad { color: #f44336; }
+    .mini-stat .lbl { font-size: 9px; color: #999; margin-top: 2px; }
+
+    .report-body { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
+    .report-card.open .report-body { max-height: 6000px; }
+    .report-text { padding: 20px; background: #fafbfc; border-top: 1px solid #f0f0f0; font-size: 14px; line-height: 1.9; white-space: pre-wrap; color: #444; }
+    .report-actions { padding: 12px 20px; border-top: 1px solid #f0f0f0; }
+    .report-actions button { padding: 10px 16px; border: 1.5px solid #e0e0e0; border-radius: 8px; background: white; font-size: 13px; font-family: inherit; cursor: pointer; color: #555; }
+
+    .empty-state { text-align: center; padding: 60px 20px; color: #999; }
+    .empty-state .icon { font-size: 48px; margin-bottom: 12px; } .empty-state .title { font-size: 16px; }
+    .loading { text-align: center; padding: 40px; color: #999; }
+    .loading .spinner { width: 36px; height: 36px; border: 3px solid #f0f0f0; border-top-color: #4a90d9; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px); background: #333; color: white; padding: 12px 24px; border-radius: 10px; font-size: 14px; z-index: 300; transition: transform 0.3s, visibility 0s .3s; visibility: hidden; }
+    .toast.show { transform: translateX(-50%) translateY(0);  visibility: visible; transition: transform .3s; }
+    /* PIN 로그인 */
+    .login-card { background: white; border-radius: 16px; padding: 32px; margin-top: 50px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); text-align: center; }
+    .login-icon { font-size: 44px; margin-bottom: 12px; }
+    .login-title { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+    .login-desc { font-size: 13px; color: #888; margin-bottom: 20px; }
+    .login-input { width: 100%; padding: 14px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 18px; font-family: inherit; text-align: center; letter-spacing: 6px; font-weight: 600; margin-bottom: 12px; }
+    .login-input:focus { outline: none; border-color: #4a90d9; box-shadow: 0 0 0 3px rgba(74,144,217,0.15); }
+    .login-input::placeholder { letter-spacing: 0; font-size: 14px; font-weight: 400; color: #bbb; }
+    .login-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #4a90d9, #357abd); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; font-family: inherit; cursor: pointer; }
+    .login-error { color: #e53935; font-size: 13px; margin-top: 10px; min-height: 16px; }
+    @media (max-width: 420px) { .chart-row { grid-template-columns: 1fr; } }
+  </style>
+  <script src="/config.js"></script>
+</head>
+<body>
+  <div class="header"><h1>📚 학습 리포트</h1><div class="student-name" id="who">—</div></div>
+  <div class="content">
+    <div class="loading" id="loading"><div class="spinner"></div><div>불러오는 중...</div></div>
+    <div class="login-card" id="loginCard" style="display:none">
+      <div class="login-icon">🔐</div>
+      <div class="login-title">학생 확인</div>
+      <div class="login-desc" id="loginDesc">출결번호(PIN)를 입력해주세요</div>
+      <input type="text" inputmode="numeric" class="login-input" id="pinInput" placeholder="출결번호"
+        onkeyup="if(event.key==='Enter')submitPin()">
+      <button class="login-btn" onclick="submitPin()">확인</button>
+      <div class="login-error" id="loginError"></div>
+    </div>
+    <div id="list"></div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    var token = new URLSearchParams(location.search).get('t');
+
+    function show(el){ document.getElementById(el).style.display = ''; }
+    function hide(el){ document.getElementById(el).style.display = 'none'; }
+
+    async function main() {
+      if (!token) { fail('링크가 올바르지 않아요.'); return; }
+      fetchReports('');   // 먼저 PIN 없이 시도 → 필요하면 로그인 카드
+    }
+    async function fetchReports(pin) {
+      show('loading'); hide('loginCard'); document.getElementById('list').innerHTML = '';
+      try {
+        var url = '/api/report?action=parent&token=' + encodeURIComponent(token) + (pin ? ('&pin=' + encodeURIComponent(pin)) : '');
+        var res = await fetch(url);
+        var data = await res.json();
+        if (!res.ok) throw new Error(data.error || '불러오기 실패');
+        if (data.needPin) { showLogin(data.name, pin ? (data.error || '출결번호가 일치하지 않아요.') : ''); return; }
+        hide('loading');
+        document.getElementById('who').textContent = ((data.student && data.student.name) || '') + ' 학생 ' + ((data.student && data.student.grade) || '');
+        var reports = (data.reports || []).filter(function(r){ return r.body; });
+        if (!reports.length) { document.getElementById('list').innerHTML = '<div class="empty-state"><div class="icon">📭</div><div class="title">아직 공개된 평가서가 없습니다</div></div>'; return; }
+        render(reports);
+      } catch (e) { fail(e.message); }
+    }
+    function showLogin(name, err) {
+      hide('loading');
+      document.getElementById('loginDesc').textContent = (name ? name + ' 학생 — ' : '') + '출결번호(PIN)를 입력해주세요';
+      document.getElementById('loginError').textContent = err || '';
+      show('loginCard');
+      document.getElementById('pinInput').focus();
+    }
+    function submitPin() {
+      var p = document.getElementById('pinInput').value.trim();
+      if (!p) { document.getElementById('loginError').textContent = '출결번호를 입력하세요.'; return; }
+      fetchReports(p);
+    }
+    function fail(m){ hide('loading'); hide('loginCard'); document.getElementById('list').innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><div class="title">' + esc(m) + '</div></div>'; }
+
+    function render(reports) {
+      var c = document.getElementById('list'); c.innerHTML = '';
+      reports.forEach(function(rpt, idx) {
+        var parts = rpt.month.split('-'), year = parts[0], month = parseInt(parts[1]);
+        var p = rpt.planner || {};
+        var atTot = (p.태도?p.태도.상+p.태도.중+p.태도.하:0);
+        var hwTot = (p.과제?p.과제.상+p.과제.중+p.과제.하:0);
+        var vocaRate = (p.단어테스트 && p.단어테스트.총횟수>0) ? Math.round(p.단어테스트.통과/p.단어테스트.총횟수*100) : 0;
+        var hwRate = hwTot>0 ? Math.round(p.과제.상/hwTot*100) : 0;
+        var card = document.createElement('div');
+        card.className = 'report-card' + (idx === 0 ? ' open' : '');
+        card.innerHTML =
+          '<div class="report-header" onclick="this.parentElement.classList.toggle(\'open\')">' +
+            '<div class="report-month"><div class="year">' + year + '</div><div class="month">' + month + '월</div></div>' +
+            '<div class="report-info"><div class="title">' + month + '월 학습 리포트</div><div class="date">' + year + '년 ' + month + '월</div></div>' +
+            '<div class="report-toggle">▼</div>' +
+          '</div>' +
+          '<div class="chart-row">' +
+            // 도넛은 **수업이 있었던 날 전부**(결석 포함)입니다. 아래 미니 통계는
+            //   **나온 날**(정시+지각)이라 숫자가 다릅니다 — 둘 다 「수업일」로 적어
+            //   두었더니 학부모가 보기에 22 와 20 이 같은 이름으로 엇갈렸습니다.
+            chartBox('📌 출석 현황', 'a'+idx, p.총수업일수||0, '총 수업일') +
+            chartBox('🎯 수업 태도', 't'+idx, (atTot>0?Math.round(p.태도.상/atTot*100):0)+'%', '상 비율') +
+          '</div>' +
+          '<div class="chart-row">' +
+            chartBox('📝 단어 테스트', 'w'+idx, vocaRate+'%', '통과율') +
+            chartBox('📚 과제 수행도', 'h'+idx, hwRate+'%', '상 비율') +
+          '</div>' +
+          progressBlock(p) +
+          '<div class="mini-stats">' +
+            ms((p.출석?p.출석.정시등원+p.출석.지각:0), '출석', '') +
+            ms(vocaRate + '%', '단어', cl(vocaRate)) +
+            ms(hwRate + '%', '과제(상)', cl(hwRate)) +
+            // 아이가 앱에서 직접 체크한 과제 — 과제를 안 내준 달이면 아예 안 보입니다
+            (p.과제체크 && p.과제체크.총건수 > 0
+              ? ms(p.과제체크.완료율 + '%', '과제 체크(' + p.과제체크.완료 + '/' + p.과제체크.총건수 + ')', cl(p.과제체크.완료율))
+              : '') +
+          '</div>' +
+          '<div class="report-body"><div class="report-text">' + esc(rpt.body) + '</div>' +
+          '<div class="report-actions"><button onclick="copyText(this)">📋 복사</button></div></div>';
+        c.appendChild(card);
+        // 도넛 그리기 (planner 카운트 기반, 선생님 화면과 동일)
+        setTimeout(function(){
+          drawDonut('a'+idx, [p.출석.정시등원, p.출석.지각, p.출석.결석], ['#4caf50','#ff9800','#f44336']);
+          setLegend('a'+idx, ['정시 '+p.출석.정시등원,'지각 '+p.출석.지각,'결석 '+p.출석.결석], ['#4caf50','#ff9800','#f44336']);
+          drawDonut('t'+idx, [p.태도.상, p.태도.중, p.태도.하], ['#4a90d9','#90caf9','#e0e0e0']);
+          setLegend('t'+idx, ['상 '+p.태도.상,'중 '+p.태도.중,'하 '+p.태도.하], ['#4a90d9','#90caf9','#e0e0e0']);
+          drawDonut('w'+idx, [p.단어테스트.통과, p.단어테스트.미통과], ['#4a90d9','#e0e0e0']);
+          setLegend('w'+idx, ['통과 '+p.단어테스트.통과,'미통과 '+p.단어테스트.미통과], ['#4a90d9','#e0e0e0']);
+          drawDonut('h'+idx, [p.과제.상, p.과제.중, p.과제.하], ['#4caf50','#ff9800','#f44336']);
+          setLegend('h'+idx, ['상 '+p.과제.상,'중 '+p.과제.중,'하 '+p.과제.하], ['#4caf50','#ff9800','#f44336']);
+        }, 50);
+      });
+    }
+
+    function chartBox(title, id, centerNum, centerUnit) {
+      return '<div class="chart-box"><div class="chart-box-title">' + title + '</div>' +
+        '<div class="donut-wrap"><canvas id="c_' + id + '" width="120" height="120"></canvas>' +
+        '<div class="donut-center"><div class="num">' + centerNum + '</div><div class="unit">' + centerUnit + '</div></div></div>' +
+        '<div class="donut-legend" id="lg_' + id + '"></div></div>';
+    }
+    function setLegend(id, labels, colors) {
+      var el = document.getElementById('lg_' + id); if (!el) return;
+      el.innerHTML = labels.map(function(t,i){ return '<span style="color:'+colors[i]+'">●</span> ' + esc(t); }).join(' ');
+    }
+
+    function progressBlock(p) {
+      var areas = [{k:'문법',i:'📐'},{k:'리딩',i:'📕'},{k:'단어',i:'🔤'}];
+      var first = p.월초진도 || {}, last = p.최종진도 || {};
+      var html = '', has = false;
+      areas.forEach(function(a){
+        var L = last[a.k], F = first[a.k]; if (!L) return; has = true;
+        var detail = ((L.교재명||'') + ' ' + (L.유닛코드||'') + (L.제목 ? ' — ' + L.제목 : '')).trim();
+        var change = '';
+        if (F && F.교재명 && L.교재명 && F.교재명 !== L.교재명) change = F.교재명 + ' 완료 → ' + L.교재명 + ' 시작';
+        else if (F && F.유닛코드 && L.유닛코드 && F.유닛코드 !== L.유닛코드) change = F.유닛코드 + ' → ' + L.유닛코드;
+        html += '<div class="p-card"><div class="p-icon ' + a.k + '">' + a.i + '</div><div>' +
+          '<div class="p-title">' + a.k + '</div><div class="p-detail">' + esc(detail) + '</div>' +
+          (change ? '<div class="p-change">📈 ' + esc(change) + '</div>' : '') + '</div></div>';
+      });
+      var out = '';
+      if (has) out += '<div class="progress-section"><div class="progress-section-title">📍 현재 진도</div>' + html + '</div>';
+      var tr = p.교재전환 || [];
+      if (tr.length) {
+        out += '<div class="transition-section"><div class="progress-section-title">🔄 이번 달 교재 전환</div>' +
+          tr.map(function(t){ return '<div class="transition-badge"><b>'+esc(t.영역)+'</b> '+esc(t.이전교재)+' <span class="arrow">→</span> '+esc(t.새교재)+'</div>'; }).join('') + '</div>';
+      }
+      return out;
+    }
+
+    function drawDonut(id, vals, cols) {
+      var c = document.getElementById('c_' + id); if (!c) return;
+      var ctx = c.getContext('2d'), s = 120, cx = s/2, cy = s/2, r = 46, lw = 14;
+      ctx.clearRect(0,0,s,s);
+      var t = vals.reduce(function(a,b){return a+(b||0);},0);
+      if (t === 0) { ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.strokeStyle='#e0e0e0'; ctx.lineWidth=lw; ctx.stroke(); return; }
+      var a = -Math.PI/2;
+      vals.forEach(function(v,i){ if(!v)return; var sl=(v/t)*Math.PI*2; ctx.beginPath(); ctx.arc(cx,cy,r,a,a+sl); ctx.strokeStyle=cols[i]; ctx.lineWidth=lw; ctx.lineCap='round'; ctx.stroke(); a+=sl; });
+    }
+    function ms(v,l,c){ return '<div class="mini-stat"><div class="val ' + c + '">' + v + '</div><div class="lbl">' + l + '</div></div>'; }
+    function cl(v){ return v >= 80 ? 'good' : v >= 50 ? 'warn' : 'bad'; }
+    function copyText(btn){ var t = btn.closest('.report-body').querySelector('.report-text').textContent; if (navigator.clipboard) navigator.clipboard.writeText(t).then(function(){ showToast('복사되었습니다'); }); }
+    function esc(t){ return t ? String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''; }
+    function showToast(m){ var e=document.getElementById('toast'); e.textContent=m; e.classList.add('show'); setTimeout(function(){e.classList.remove('show');},2500); }
+    main();
+  </script>
+</body>
+</html>

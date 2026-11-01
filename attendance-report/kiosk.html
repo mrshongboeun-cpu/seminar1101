@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>출결</title>
+<!-- 2차 세미나 attendance_student.html 키오스크 이식 (데이터는 Supabase) -->
+<style>
+  :root { --bg:#0f1420; --card:#161c28; --line:#252c3a; --text:#e8ecf3; --dim:#8a94a6;
+    --primary:#4a90ff; --success:#34d399; --late:#f5a623; --danger:#f0556b; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; padding:20px; user-select:none;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
+  nav { position:fixed; top:12px; right:14px; font-size:12px; opacity:.5; }
+  nav a { color:var(--dim); text-decoration:none; margin-left:10px; }
+  .clock { text-align:center; margin-bottom:6px; }
+  .clock .t { font-size:40px; font-weight:800; letter-spacing:2px; font-variant-numeric:tabular-nums; }
+  .clock .d { font-size:13px; color:var(--dim); margin-top:2px; }
+  .academy { font-size:14px; font-weight:700; color:var(--primary); margin-bottom:14px; }
+  .prompt { font-size:15px; color:var(--dim); margin-bottom:12px; }
+  .dots { display:flex; gap:14px; height:56px; align-items:center; justify-content:center; margin-bottom:8px; }
+  .pin-dot { width:46px; height:56px; border-radius:12px; background:var(--card); border:1.5px solid var(--line);
+    display:flex; align-items:center; justify-content:center; font-size:26px; font-weight:800; }
+  .pin-dot.filled { border-color:var(--primary); color:var(--primary); }
+  .numpad { display:grid; grid-template-columns:repeat(3,90px); gap:12px; margin-top:12px; }
+  .numpad button { height:78px; font-size:28px; font-weight:600; border:1px solid var(--line); background:var(--card);
+    color:var(--text); border-radius:16px; cursor:pointer; font-family:inherit; }
+  .numpad button:active { background:#1f2735; transform:scale(0.97); }
+  .btn-clear { color:var(--late) !important; font-size:16px !important; }
+  .btn-del { color:var(--dim) !important; }
+  /* 결과 오버레이 */
+  .overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; padding:20px; z-index:50; }
+  .overlay.on { display:flex; }
+  .rcard { background:var(--card); border:1px solid var(--line); border-radius:22px; padding:36px 28px; text-align:center; width:100%; max-width:360px; }
+  .rcard.checkin { border-color:rgba(52,211,153,.5); }
+  .rcard.checkout { border-color:rgba(74,144,255,.5); }
+  .rcard.late { border-color:rgba(245,166,35,.5); }
+  .rcard.err { border-color:rgba(240,85,107,.5); }
+  .r-icon { font-size:56px; margin-bottom:10px; }
+  .r-name { font-size:28px; font-weight:800; }
+  .r-grade { font-size:14px; color:var(--dim); margin-top:2px; }
+  .r-action { font-size:18px; font-weight:700; margin-top:14px; }
+  .rcard.checkin .r-action { color:var(--success); } .rcard.checkout .r-action { color:var(--primary); }
+  .r-time { font-size:34px; font-weight:800; margin-top:4px; font-variant-numeric:tabular-nums; }
+  .r-sub { font-size:14px; color:var(--dim); margin-top:6px; }
+  .late-tag { display:inline-block; margin-top:12px; background:rgba(245,166,35,.15); color:var(--late); font-weight:700; font-size:13px; padding:5px 14px; border-radius:999px; }
+  .loading { position:fixed; inset:0; background:rgba(15,20,32,.6); display:none; align-items:center; justify-content:center; z-index:60; }
+  .loading.on { display:flex; }
+  .spinner { width:44px; height:44px; border:4px solid var(--line); border-top-color:var(--primary); border-radius:50%; animation:spin .8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+</style>
+<script src="/config.js"></script>
+</head>
+<body>
+<nav><a href="/" title="홈으로">🏠 홈</a><a href="/board.html">현황판</a><a href="/daily.html">데일리 리포트</a><a href="/students.html">학생관리</a></nav>
+
+<div class="clock"><div class="t" id="clockTime">--:--</div><div class="d" id="clockDate">—</div></div>
+<div class="academy"><span data-academy></span> 출결 체크</div>
+<div class="prompt">출결번호(PIN)를 누르세요</div>
+<div class="dots">
+  <div class="pin-dot" id="dot0"></div><div class="pin-dot" id="dot1"></div>
+  <div class="pin-dot" id="dot2"></div><div class="pin-dot" id="dot3"></div>
+</div>
+<div class="numpad">
+  <button onclick="press('1')">1</button><button onclick="press('2')">2</button><button onclick="press('3')">3</button>
+  <button onclick="press('4')">4</button><button onclick="press('5')">5</button><button onclick="press('6')">6</button>
+  <button onclick="press('7')">7</button><button onclick="press('8')">8</button><button onclick="press('9')">9</button>
+  <button class="btn-clear" onclick="clearPin()">초기화</button>
+  <button onclick="press('0')">0</button>
+  <button class="btn-del" onclick="del()">←</button>
+</div>
+
+<div class="loading" id="loading"><div class="spinner"></div></div>
+<div class="overlay" id="overlay"><div class="rcard" id="rcard">
+  <div class="r-icon" id="rIcon"></div>
+  <div class="r-name" id="rName"></div>
+  <div class="r-grade" id="rGrade"></div>
+  <div class="r-action" id="rAction"></div>
+  <div class="r-time" id="rTime"></div>
+  <div class="r-sub" id="rSub"></div>
+  <div id="rLate"></div>
+</div></div>
+
+<script>
+var pin = '', locked = false, closeTimer = null;
+function $(id){ return document.getElementById(id); }
+
+function tick(){
+  var n = new Date();
+  $('clockTime').textContent = String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
+  var days = ['일','월','화','수','목','금','토'];
+  $('clockDate').textContent = n.getFullYear() + '년 ' + (n.getMonth()+1) + '월 ' + n.getDate() + '일 ' + days[n.getDay()] + '요일';
+}
+setInterval(tick, 1000); tick();
+
+function dots(){ for (var i=0;i<4;i++){ var d=$('dot'+i); d.textContent = i<pin.length?pin[i]:''; d.className = 'pin-dot'+(i<pin.length?' filled':''); } }
+function press(n){ if (locked || pin.length>=4) return; pin += n; dots(); if (pin.length===4){ locked=true; setTimeout(submit, 200); } }
+function del(){ if (locked) return; pin = pin.slice(0,-1); dots(); }
+function clearPin(){ if (locked) return; pin=''; dots(); }
+function reset(){ pin=''; locked=false; dots(); $('overlay').classList.remove('on'); if (closeTimer) clearTimeout(closeTimer); }
+
+async function submit(){
+  $('loading').classList.add('on');
+  try {
+    var res = await fetch('/api/attendance', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ action:'checkin', pin:pin }) });
+    var d = await res.json();
+    $('loading').classList.remove('on');
+    if (!res.ok) { showErr(d.error || '오류'); return; }
+    showResult(d);
+  } catch(e){ $('loading').classList.remove('on'); showErr('서버 오류가 발생했습니다'); }
+}
+
+function showResult(d){
+  var card = $('rcard'), late = d.lateness === '지각';
+  $('rName').textContent = d.name || '';
+  $('rGrade').textContent = d.grade || '';
+  $('rTime').textContent = d.time || '';
+  $('rLate').innerHTML = '';
+  if (d.mode === 'in') {
+    card.className = 'rcard ' + (late ? 'late' : 'checkin');
+    $('rIcon').textContent = late ? '⏰' : '✅';
+    $('rAction').textContent = '등원 완료';
+    $('rSub').textContent = d.expected_end ? ('예상 하원 ' + d.expected_end) : '';
+    if (late) $('rLate').innerHTML = '<div class="late-tag">지각 등원</div>';
+  } else if (d.mode === 'out') {
+    card.className = 'rcard checkout';
+    $('rIcon').textContent = '👋';
+    $('rAction').textContent = '하원 완료';
+    $('rSub').textContent = d.check_in ? ('등원 ' + d.check_in) : '';
+  } else { // done
+    card.className = 'rcard checkout';
+    $('rIcon').textContent = '✔️';
+    $('rAction').textContent = '이미 하원 처리됨';
+    $('rSub').textContent = '하원 ' + (d.time || '');
+  }
+  $('overlay').classList.add('on');
+  closeTimer = setTimeout(reset, 3500);
+}
+function showErr(msg){
+  $('rcard').className = 'rcard err';
+  $('rIcon').textContent = '❌'; $('rName').textContent = msg; $('rGrade').textContent='';
+  $('rAction').textContent=''; $('rTime').textContent=''; $('rSub').textContent=''; $('rLate').innerHTML='';
+  $('overlay').classList.add('on');
+  closeTimer = setTimeout(reset, 2500);
+}
+$('overlay').addEventListener('click', reset);
+// 물리 키보드도 지원
+document.addEventListener('keydown', function(e){
+  if (e.key >= '0' && e.key <= '9') press(e.key);
+  else if (e.key === 'Backspace') del();
+  else if (e.key === 'Escape') clearPin();
+});
+</script>
+</body>
+</html>

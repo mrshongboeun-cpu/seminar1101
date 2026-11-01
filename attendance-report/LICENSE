@@ -1,0 +1,61 @@
+올인원 학원 시스템 (academy-system) 이용 약관
+Copyright (c) 2026 홍랩 (HongLab). All rights reserved.
+
+이 소프트웨어의 저작권은 저작권자에게 있습니다.
+공개된 저장소에 있다는 것만으로 아래 범위를 넘는 권리가 생기지 않습니다.
+
+
+■ 하셔도 되는 것 (별도 허락 없이)
+
+1. 내려받아 **본인이 운영하는 학원**에서 쓰는 것. 학원 수에 제한은 없습니다.
+2. 내 학원에 맞게 **마음대로 고치는 것.** 고친 결과물은 고치신 분의 것입니다.
+3. 본인 학원의 **직원·강사**가 이 시스템을 쓰는 것.
+4. 세미나에서 받은 자료와 함께 **개인적으로 학습·연습**하는 것.
+
+
+■ 하시면 안 되는 것 (저작권자의 서면 허락 필요)
+
+1. **재배포** — 이 코드(또는 수정본)를 다른 사람에게 나눠 주거나 공개 배포하는 것.
+2. **재판매** — 이 코드(또는 수정본)를 팔거나, 유료 서비스·구독 상품으로 제공하는 것.
+   (본인 학원 운영에 쓰는 것은 여기에 해당하지 않습니다)
+3. **대행 구축** — 제3자의 학원에 이 시스템을 설치·운영해 주고 대가를 받는 것.
+4. **교육 상품화** — 이 코드를 교재·강의·세미나·강좌의 실습물로 쓰는 것.
+   (이 저장소는 홍랩 세미나의 실습물입니다)
+
+위 2~4 를 원하시면 먼저 연락 주세요. 막으려는 게 아니라, 이야기하고 싶어서입니다.
+
+
+■ 보증 없음
+
+이 소프트웨어는 "있는 그대로" 제공됩니다. 저작권자는 명시적이든 묵시적이든
+어떠한 보증도 하지 않으며, 이 소프트웨어의 사용으로 발생한 어떠한 손해에 대해서도
+책임지지 않습니다. 학원 운영·학부모 안내·개인정보 처리에 대한 책임은
+이 소프트웨어를 사용하는 분에게 있습니다.
+
+
+─────────────────────────────────────────────────────────────
+
+All-in-One Academy System — License
+Copyright (c) 2026 HongLab. All rights reserved.
+
+PERMITTED, without separate permission:
+  1. Use in academies you own or operate (no limit on the number).
+  2. Modification for your own use; your modifications are yours.
+  3. Use by staff and instructors of your own academy.
+  4. Personal study and practice alongside the seminar materials.
+
+NOT PERMITTED without prior written permission of the copyright holder:
+  1. Redistribution of this code or derivatives, in any form.
+  2. Resale, or offering it as a paid or subscription service.
+     (Running it for your own academy is not covered by this clause.)
+  3. Installing or operating it for third-party academies for compensation.
+  4. Using it as courseware for any book, course, seminar or training product.
+
+Being hosted in a public repository does not grant rights beyond the above.
+To request any of items 2–4, please get in touch.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED. THE COPYRIGHT HOLDER SHALL NOT BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY ARISING FROM THE USE OF THIS SOFTWARE. Responsibility for
+academy operations, parent communications and personal-data handling rests
+with the person using this software.

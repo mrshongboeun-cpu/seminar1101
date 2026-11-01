@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>데일리 리포트</title>
+<style>
+  :root { --line:#e5e2da; --ink:#1f2328; --muted:#6b7280; --green:#1f7a70; --bg:#faf9f6;
+    --late:#c98a2e; --absent:#cf6a4a; --ok:#1f7a70; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
+  header { padding:16px 20px; border-bottom:1px solid var(--line); background:#fff; display:flex;
+    justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
+  h1 { margin:0; font-size:19px; }
+  nav a { font-size:13px; color:var(--muted); text-decoration:none; margin-left:12px; }
+  nav a:hover, nav a.on { color:var(--green); font-weight:700; }
+  main { max-width:960px; margin:0 auto; padding:20px; }
+  .bar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
+  input, select, textarea, button { font-family:inherit; font-size:14px; }
+  input[type=date], input[type=search] { padding:8px 10px; border:1px solid var(--line); border-radius:8px; }
+  .btn { padding:8px 14px; border-radius:8px; cursor:pointer; border:1px solid var(--line); background:#fff; }
+  .btn.green { background:var(--green); color:#fff; border-color:var(--green); }
+  .btn.coral { background:var(--absent); color:#fff; border-color:var(--absent); }
+  .btn:disabled { opacity:.5; cursor:default; }
+  .muted { color:var(--muted); font-size:13px; }
+  .err { color:var(--absent); font-size:13px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:12px; }
+  .stuhead { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+  .nm { font-size:16px; font-weight:800; }
+  a.nm { color:inherit; text-decoration:none; border-bottom:1px dashed #cfcbc0; }
+  a.nm:hover { color:var(--green); border-bottom-color:var(--green); }
+  .pill { font-size:12px; font-weight:700; padding:3px 9px; border-radius:999px; background:#f1f0ea; color:var(--muted); }
+  .pill.late { background:#fbeee9; color:var(--late); }
+  .pill.sent { background:#e7f0ee; color:var(--green); }
+  .pill.unsent { background:#f1f0ea; color:var(--muted); }
+  .savemsg { font-size:12px; margin-left:auto; }
+  .savemsg.ok { color:var(--green); } .savemsg.saving { color:var(--muted); } .savemsg.err { color:var(--absent); }
+  .prog { border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin:8px 0; background:#fbfaf7; }
+  .prow { display:grid; grid-template-columns:52px 1fr; gap:8px; align-items:center; margin:5px 0; }
+  .prow .k { font-size:12px; font-weight:800; color:var(--muted); }
+  .prow input { width:100%; padding:7px 9px; border:1px solid var(--line); border-radius:8px; }
+  /* 교재 바꾸기 — 교재를 다 끝낸 날 여기서 바로 다음 권으로 */
+  .bkrow { grid-column:2; display:flex; align-items:center; gap:6px; margin:2px 0 6px; font-size:11.5px; color:var(--muted); }
+  .bkrow select { font-size:11.5px; padding:3px 6px; border:1px solid var(--line); border-radius:6px; color:#444; max-width:62%; }
+  .prev { grid-column:2; font-size:11.5px; color:var(--muted); margin-top:-2px; }
+  /* 📜 최근 수업 — 운영 플래너와 같은 모양 */
+  .hist{margin:6px 0 10px;border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:12px;}
+  .hist table{width:100%;border-collapse:collapse;font-size:11.5px;}
+  .hist th,.hist td{padding:4px 7px;border-bottom:1px solid #f1f1f1;text-align:left;vertical-align:top;}
+  .hist th{background:#faf8f4;font-size:11px;color:#8a8f98;font-weight:700;}
+  .hist td.d{white-space:nowrap;font-weight:700;width:68px;}
+  .hist .same{color:#b5bac2;}
+  .hist .bad{color:#c0392b;font-weight:700;} .hist .ok{color:#1c9a66;font-weight:700;}
+  .hist .more{display:block;width:100%;border:0;background:#fafafa;padding:4px;font:inherit;
+              font-size:11.5px;color:#6b7280;cursor:pointer;}
+  .retest{background:#fde8e8;color:#b91c1c;border-radius:8px;padding:5px 9px;
+          font-size:12.5px;font-weight:800;margin:4px 0;}
+  /* 점수칸 밑 한 줄 — 「지금 재시 대상인가」 를 눈으로 보여줍니다.
+     조용히 안 올라가는 게 제일 나빠서, 판정 못 한 경우도 적어줍니다. */
+  .rhint { font-size:11px; line-height:1.4; color:var(--muted); margin-top:3px; min-height:14px; }
+  .rhint.hit { color:#b91c1c; font-weight:700; }
+  .warn { grid-column:1/-1; font-size:11.5px; line-height:1.5; color:#8a5d0f; background:#fff8e6;
+          border:1px solid #f0dca8; border-radius:7px; padding:6px 8px; margin:4px 0 2px; }
+  .warn a { color:#7a500c; font-weight:700; }
+  .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:8px 0; }
+  @media(max-width:640px){ .grid{ grid-template-columns:1fr 1fr; } }
+  .fld label { display:block; font-size:11.5px; font-weight:700; color:var(--muted); margin-bottom:3px; }
+  .seg { display:flex; gap:4px; }
+  .seg button { flex:1; padding:7px 0; border:1px solid var(--line); background:#fff; border-radius:7px; cursor:pointer; font-size:13px; }
+  .seg button.on { background:var(--green); color:#fff; border-color:var(--green); }
+  .fld input.score { width:100%; padding:7px 9px; border:1px solid var(--line); border-radius:8px; }
+  .note { margin:8px 0; }
+  .note label { display:block; font-size:11.5px; font-weight:700; color:var(--muted); margin-bottom:3px; }
+  .note textarea { width:100%; min-height:44px; padding:8px 10px; border:1px solid var(--line); border-radius:8px; resize:vertical; }
+  .note.parent textarea { border-color:#cfe0dc; background:#f7fbfa; }
+  /* 발송 모달 */
+  .overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); display:none; align-items:flex-start; justify-content:center; padding:20px; overflow:auto; z-index:50; }
+  .overlay.on { display:flex; }
+  .modal { background:#fff; border-radius:14px; padding:20px; width:100%; max-width:640px; margin-top:20px; }
+  .modal h2 { margin:0 0 4px; font-size:18px; }
+  .srow { display:flex; gap:10px; padding:10px; border:1px solid var(--line); border-radius:10px; margin-bottom:8px; align-items:flex-start; }
+  .srow.off { opacity:.5; }
+  .srow input[type=checkbox] { width:18px; height:18px; margin-top:2px; accent-color:var(--green); }
+  .srow .info { flex:1; font-size:13px; }
+  .srow .info b { font-size:14px; }
+  .srow .l2 { color:var(--muted); font-size:12px; line-height:1.6; margin-top:3px; }
+  .modal .foot { display:flex; gap:8px; margin-top:14px; }
+</style>
+<script src="/config.js"></script>
+</head>
+<body>
+<header>
+  <h1><span data-academy></span> 📝 데일리 리포트 <span id="dateLabel" class="muted"></span></h1>
+  <nav>
+    <a href="/" title="홈으로">🏠 홈</a><a href="/board.html">현황판</a><a href="/daily.html" class="on">데일리 리포트</a>
+    <a href="/kiosk.html">키오스크</a><a href="/students.html">학생관리</a>
+    <a href="/student_card.html">학생 카드</a>
+    <a href="/books.html">교재</a><a href="/report.html">월말평가서</a>
+  </nav>
+</header>
+<main>
+  <div class="bar">
+    <input type="date" id="date" />
+    <button class="btn" id="reload">🔄 새로고침</button>
+    <input type="search" id="q" placeholder="🔍 학생 이름" oninput="render()" style="width:130px" />
+    <select class="btn" id="addStu" style="display:none;max-width:170px"></select>
+    <button class="btn" id="addBtn">➕ 보강 학생 추가</button>
+    <button class="btn" id="retest" style="margin-left:auto;display:none">🔁 재시 안내</button>
+    <button class="btn coral" id="send">📨 리포트 카톡 보내기</button>
+  </div>
+  <div class="muted" style="margin-bottom:12px">
+    매일 새벽, 오늘 등원할 학생의 리포트가 <b>다음 진도까지 채워져 자동 생성</b>돼요. 바뀐 것만 고치면 됩니다 · 칸을 고치면 자동 저장 · 추가사항은 학부모 카톡에 나갑니다.<br>
+    <b>안 온 학생(결석)</b>은 따로 추가하지 않아요 — 오늘 수업 예정이면 <b>안 와도 이미 목록에 있습니다.</b> 그 학생 칸의 <b>결석</b>만 누르세요.<br>
+    <b>📕 교재</b>를 다 끝냈으면 과목 아래 교재 칸에서 <b>다음 권으로 바로 바꿀 수 있어요</b> (진도는 새 교재 1번부터).<br>
+    <b>➕ 보강 학생 추가</b>는 반대 경우예요 — <b>정규 수업일이 아닌 날 온 학생</b>(결석 보강). 그날 행을 만들면 진도가 다음으로 이어집니다.<br>
+    단어테스트를 <b>불통과</b>로 누르거나 <b>점수만 「12/20」처럼 적어도</b> (기준 미달이면) <b>🔁 재시 안내</b> 버튼에 자동으로 올라옵니다 —
+    점수칸 밑에 <b>지금 대상인지</b>가 한 줄로 나와요. 통과/불통과를 직접 누르면 <b>그게 점수보다 우선</b>입니다 ·
+    학생 이름을 누르면 <b>📋 학생 카드</b>에서 지난 진도를 쭉 볼 수 있어요.
+  </div>
+  <div id="msg" class="err"></div>
+  <div id="list"><div class="muted">날짜를 고르면 데일리 리포트가 열립니다.</div></div>
+</main>
+
+<!-- 발송 미리보기 모달 -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2>📨 데일리 리포트 발송</h2>
+    <div class="muted" id="sendSub" style="margin-bottom:12px"></div>
+    <div id="sendList"></div>
+    <div class="foot">
+      <button class="btn green" id="doSend">발송</button>
+      <button class="btn" id="cancelSend">닫기</button>
+    </div>
+    <div id="sendResult" class="muted" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<!-- 🔁 재시 안내 미리보기 모달 (단어테스트 불통과한 학생만) -->
+<div class="overlay" id="rOverlay">
+  <div class="modal">
+    <h2>🔁 재시 안내 발송</h2>
+    <div class="muted" id="rSub" style="margin-bottom:12px"></div>
+    <div id="rList"></div>
+    <div class="foot">
+      <button class="btn green" id="rDoSend">발송</button>
+      <button class="btn" id="rCancel">닫기</button>
+    </div>
+    <div id="rResult" class="muted" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const SUBJECTS = ["문법", "리딩", "단어"];
+// 교재DB의 교재명 (과목별) — 「교재 바꾸기」 드롭다운에 씁니다.
+//   교재DB에 있는 것만 고를 수 있게 합니다. 손으로 치면 목차를 못 찾아 진도가 멈춥니다.
+let BOOKS = {};
+let ROWS = [], TOC = {}, PREVIEW = [], EMPTY = null;   // EMPTY = 비었을 때 서버가 알려준 이유
+
+// ── 📜 최근 수업 ────────────────────────────────────────
+// 운영 플래너(studyplanner `public/daily_report.html` 의 histHtml)를 그대로 옮긴 것.
+// 시트처럼 위로 쭉: 날짜(요일) · 과목별 진도 · 단어 TEST · 태도/과제 · 지적.
+//   · 3줄 먼저 보여주고 「더 보기」로 전부
+//   · 직전(한 칸 아래)과 같은 진도는 흐리게 — 며칠째 그대로인지 바로 보임
+//   · 값이 없으면 "-"
+const WD = ["일","월","화","수","목","금","토"];
+const HIST_OPEN = {};
+function md(d){ return String(d||"").slice(0,10).slice(5).replace("-","/"); }
+function wdOf(d){
+  const t = new Date(String(d||"").slice(0,10) + "T00:00:00Z");
+  return isNaN(t.getTime()) ? "" : WD[t.getUTCDay()];
+}
+function isFail(v){ return /불통과|미통과|재시/.test(String(v||"")); }
+// 재시 안내를 보내야 하는 행인가 — **판정은 서버(lib/retest.js)가 합니다.**
+//   화면이 규칙을 따로 들고 있으면 둘이 어긋나서, 버튼에 뜬 숫자와 실제 발송 대상이
+//   달라집니다. 그래서 서버가 준 needs_retest 를 그대로 믿습니다.
+//   (옛 배포본이 그 값을 안 주면 아래 한 줄로 버텁니다)
+function needsRetest(rec){
+  if (!rec || rec.retest_sent === "전송") return false;
+  if (typeof rec.needs_retest === "boolean") return rec.needs_retest;
+  return rec.retest_sent === "미전송" || isFail(rec.voca_test);
+}
+function resTxt(res, score){
+  if (!res && !score) return "";
+  const cls = isFail(res) ? "bad" : (res ? "ok" : "");
+  return `<span class="${cls}">${esc(res||"")}</span>${score ? " " + esc(score) : ""}`;
+}
+
+// ⛔ 「🔁 오늘 재시? — 지난 수업 단어 미통과」 띠는 **없앴습니다.**
+//    재시를 보고 **통과했다고 적을 데가 없어서**, 한 번 불통과가 나면 그 띠가
+//    영원히 안 꺼졌습니다. 끌 수 없는 알림은 며칠만 지나면 아무도 안 봅니다.
+//    지난 수업의 단어테스트 결과(불통과·점수)는 아래 📜 최근 수업 표에 그대로 있고,
+//    **오늘** 불통과면 점수칸 밑 한 줄과 위쪽 「🔁 재시 안내 (n)」 버튼이 알려줍니다.
+//    (「재시 통과」 를 기록하고 싶어지면 그때 칸을 하나 만들면 됩니다)
+
+function histHtml(r, i){
+  const H = r.recent || [];
+  if (!H.length) return "";
+  const subs = SUBJECTS.filter(sub => H.some(h => (h.progress||{})[sub]) || r.books[sub]);
+  const n = HIST_OPEN[i] ? H.length : Math.min(3, H.length);
+  const cell = (h, sub, idx) => {
+    const v = unitLabel((h.progress||{})[sub]);
+    if (!v) return '<td class="same">-</td>';
+    const older = H[idx + 1];
+    const same = older && unitLabel((older.progress||{})[sub]) === v;
+    return `<td${same ? ' class="same"' : ""}>${esc(v)}</td>`;
+  };
+  const rows = H.slice(0, n).map((h, idx) => {
+    const att = h.lateness && h.lateness !== "정시" && h.lateness !== "정시등원"
+      ? ` <span class="bad">${esc(h.lateness)}</span>` : "";
+    return `<tr><td class="d">${esc(md(h.date))} ${esc(wdOf(h.date))}${att}</td>`
+      + subs.map(sub => cell(h, sub, idx)).join("")
+      + `<td>${resTxt(h.voca_test, h.voca_score)}</td>`
+      + `<td>${esc(h.attitude || "-")}</td><td>${esc(h.homework || "-")}</td>`
+      + `<td style="color:#6b7280">${esc(h.note || "")}</td></tr>`;
+  }).join("");
+  const more = H.length > 3
+    ? `<button class="more" onclick="HIST_OPEN[${i}]=!HIST_OPEN[${i}];render()">${HIST_OPEN[i] ? "▲ 접기" : `▼ 더 보기 (최근 ${H.length}번)`}</button>`
+    : "";
+  return `<div class="hist"><table><thead><tr><th>📜 최근 수업</th>`
+    + subs.map(x => `<th>${esc(x)}</th>`).join("")
+    + `<th>단어 TEST</th><th>태도</th><th>과제</th><th>지적</th></tr></thead><tbody>${rows}</tbody></table>${more}</div>`;
+}
+
+function esc(s){ return (s ?? "").toString().replace(/[&<>"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+// 카톡 미리보기 — 과목별 교재·진도 한 줄. '-' 인 과목은 눈에 띄게 표시합니다.
+// (1차 템플릿을 쓰시는데 여기가 '-' 면 학생DB 의 과목 키 이름이 템플릿 변수명과 다른 것)
+function subjLine(vars){
+  if (!vars) return "";
+  // 과목 목록은 **`#{○○교재}` 키에서만** 뽑습니다.
+  // 예전에는 키에서 `#{`·`교재}`·`진도}` 를 지워 남는 걸 과목으로 봤는데,
+  // `#{문법유닛}`·`#{문법제목}` 처럼 다른 변수가 늘자 `문법유닛}` 이 과목으로 잡혀
+  // 미리보기에 「문법유닛} - -」 같은 쓰레기 줄이 나왔습니다.
+  const subj = Object.keys(vars).filter(k => /^#\{.+교재\}$/.test(k)).map(k => k.slice(2, -3));
+  if (!subj.length) return "";
+  const parts = subj.map(s => {
+    const b = vars[`#{${s}교재}`] || "-", p = vars[`#{${s}진도}`] || "-";
+    const miss = (b === "-" && p === "-");
+    return `<span style="${miss?"color:var(--absent)":""}">${esc(s)} ${esc(b)} ${esc(p)}</span>`;
+  });
+  const anyMiss = subj.some(s => (vars[`#{${s}교재}`]||"-") === "-" && (vars[`#{${s}진도}`]||"-") === "-");
+  return `<div class="l2">📨 카톡에 들어갈 과목: ${parts.join(" · ")}`
+    + (anyMiss ? ` <span style="color:var(--absent)">— '-' 인 과목은 학생DB의 과목 이름이 템플릿 변수명과 다른 것일 수 있어요</span>` : "")
+    + `</div>`;
+}
+// 유닛 {code,title} 정규화 + 표시 라벨
+function normU(u){ if(!u) return {code:"",title:""}; if(typeof u==="string") return {code:u,title:""}; return {code:u.code||"",title:u.title||""}; }
+function unitLabel(u){ u=normU(u); return u.code + (u.title? " — "+u.title : ""); }
+
+// 진도가 교재 목차와 연결됐는지 안내. 잘 돌아가면 아무것도 안 띄우고,
+// **안 넘어가는 경우에만** 이유와 고치는 법을 보여준다 (사용자가 스스로 고치게).
+function linkNote(row, sub){
+  const L = (row.link||{})[sub];
+  if (!L) return "";
+  if (L.state === "no-toc")
+    return `<div class="warn">📘 <b>${esc(L.book)}</b> 에 목차가 없어서 진도가 자동으로 안 넘어가요 · <a href="/books.html" target="_blank">목차 넣으러 가기 →</a></div>`;
+  if (L.state === "unlinked")
+    return `<div class="warn">⚠️ 지금 진도 <b>${esc(L.value)}</b> 가 <b>${esc(L.book)}</b> 목차에 없어서 <b>여기서 멈춥니다</b>. 위 칸에서 목차의 유닛을 <b>한 번만</b> 골라주면 다음부터 자동으로 넘어가요 · <a href="/books.html" target="_blank">목차 고치기</a></div>`;
+  return "";
+}
+function kstToday(){ return new Date(Date.now()+9*3600*1000).toISOString().slice(0,10); }
+// 주소에 ?date=·?teacher= 를 붙여 열 수 있다 (선생님앱이 담당 학생만 보이게 이렇게 연다)
+const QS = new URLSearchParams(location.search);
+const TEACHER = (QS.get("teacher") || "").trim();
+const TQ = TEACHER ? "&teacher=" + encodeURIComponent(TEACHER) : "";
+$("#date").value = /^\d{4}-\d{2}-\d{2}$/.test(QS.get("date") || "") ? QS.get("date") : kstToday();
+if (TEACHER) document.title = TEACHER + " · " + document.title;
+
+async function api(payload){
+  const res = await fetch("/api/attendance", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
+  const d = await res.json(); if (!res.ok) throw new Error(d.error || "실패"); return d;
+}
+
+async function loadToc(){
+  try { const r = await fetch("/api/attendance?action=textbooks"); const d = await r.json();
+    BOOKS = {};
+    (d.textbooks||[]).forEach(t => { TOC[t.name] = (Array.isArray(t.units)? t.units : []).map(normU); });
+    (d.textbooks||[]).forEach(t => { if(t.name) (BOOKS[t.subject||""] = BOOKS[t.subject||""] || []).push(t.name); });
+  } catch(e){}
+}
+
+async function load(){
+  $("#msg").textContent = ""; $("#list").innerHTML = '<div class="muted">불러오는 중…</div>';
+  try {
+    const r = await fetch("/api/attendance?action=daily-rows&date=" + $("#date").value + TQ);
+    const d = await r.json(); if (!r.ok) throw new Error(d.error);
+    $("#dateLabel").textContent = `${d.date} (${d.weekday})`;
+    ROWS = d.rows || [];
+    EMPTY = d.empty || null;
+    render();
+  } catch(e){ $("#list").innerHTML = ""; $("#msg").textContent = e.message; }
+}
+
+function segHtml(i, field, opts, cur){
+  return `<div class="seg" data-i="${i}" data-field="${field}">` + opts.map(o =>
+    `<button data-v="${esc(o.v)}"${(cur??"")===o.v?' class="on"':""}>${esc(o.t)}</button>`).join("") + `</div>`;
+}
+
+function render(){
+  const q = ($("#q").value||"").trim();
+  const rows = ROWS.filter(r => !q || (r.name||"").indexOf(q) > -1);
+  // 빈 화면일 때 "고장난 건지 비어 있는 건지" 를 구분해 줍니다.
+  // 샘플은 주말까지 수업이 깔려 있어 어느 요일에나 일고여덟 명이 뜹니다. 그래도 내 학생을
+  // 넣은 뒤 요일을 안 채우면 비는데, 그때 고장으로 오해하지 않게 안내합니다.
+  if (!rows.length){
+    // ★ 서버가 **왜** 비었는지 알려줍니다 (학생 0명 / 재원 0명 / 그 요일에 없음).
+    //   예전에는 셋을 뭉쳐서 「요일을 채우세요」 만 띄웠습니다. 그런데 정작 많은 건
+    //   「다른 Supabase 프로젝트를 보고 있다」 였고, 그 안내로는 못 찾습니다.
+    const e = EMPTY;
+    let 안내;
+    if (e && e.kind === "학생없음") {
+      안내 = '🔴 <b>학생이 한 명도 없습니다.</b> 요일 문제가 아닙니다.<br><br>'
+        + '· Supabase <b>SQL Editor</b> 에서 <code>sql/setup.sql</code> 을 <b>끝까지</b> Run 했나요? (표 6개 + 샘플 학생 12명)<br>'
+        + '· Vercel 의 <b>SUPABASE_URL</b> 이 <b>그 프로젝트</b> 주소인가요? 프로젝트가 여러 개면 다른 빈 프로젝트를 보고 있을 수 있어요.<br>'
+        + '· 환경변수를 고쳤으면 <b>Deployments → Redeploy</b> 를 눌러야 적용됩니다.';
+    } else if (e && e.kind === "재원없음") {
+      안내 = '🔴 <b>' + esc(e.message) + '</b><br><br>· <a href="/students.html">학생 관리</a> 에서 학생을 눌러 <b>재원상태</b>를 「재원」 으로.';
+    } else if (e && e.kind === "요일없음") {
+      안내 = '이 날짜에 <b>수업 예정인 학생이 없어요.</b> 고장난 게 아닙니다.<br><br>'
+        + esc(e.message).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>") + '<br><br>'
+        + '· <a href="/students.html">학생 관리</a> 에서 <b>요일별 등원시간</b>을 채워주세요.';
+    } else {
+      안내 = '이 날짜에 <b>수업 예정인 학생이 없어요.</b><br><br>'
+        + '· <a href="/students.html">학생 관리</a> 에서 <b>요일별 등원시간</b>을 확인해 주세요.<br>'
+        + '· 샘플까지 안 보인다면 Supabase <b>SQL Editor</b> 에서 <code>sql/setup.sql</code> 을 끝까지 Run 했는지 보세요.';
+    }
+    $("#list").innerHTML = '<div class="muted">' + 안내 + '</div>';
+    return;
+  }
+  $("#list").innerHTML = rows.map(r => cardHtml(ROWS.indexOf(r))).join("");
+  renderRetestBtn();
+}
+
+// 🔁 재시 안내 — 대상이 있을 때만 버튼이 보이고, 몇 명인지 적어 둡니다.
+function retestTargets(){ return ROWS.filter(r => needsRetest(r.record || {})); }
+function renderRetestBtn(){
+  const n = retestTargets().length;
+  const b = $("#retest");
+  b.style.display = n ? "" : "none";
+  b.textContent = `🔁 재시 안내 (${n})`;
+}
+
+function cardHtml(i){
+  const r = ROWS[i], rec = r.record || {}, prev = r.prev;
+  const late = rec.lateness === "지각" ? '<span class="pill late">지각</span>' : (rec.lateness==="결석" ? '<span class="pill late">결석</span>' : "");
+  const sent = rec.report_sent === "전송" ? '<span class="pill sent">카톡 전송됨</span>' : '<span class="pill unsent">미전송</span>';
+  const prog = SUBJECTS.map(sub => {
+    const book = r.books[sub] || "";
+    const cur = normU((rec.progress||{})[sub]);
+    const units = TOC[book] || [];
+    let field;
+    if (units.length) {
+      // 유닛을 목차에서 선택 → 코드+제목이 함께, 바꾸면 제목이 자동으로 바뀜
+      const opts = units.map(u => `<option value="${esc(u.code)}"${u.code===cur.code?" selected":""}>${esc(unitLabel(u))}</option>`).join("");
+      const custom = (cur.code && !units.some(u=>u.code===cur.code)) ? `<option value="${esc(cur.code)}" selected>${esc(unitLabel(cur))}</option>` : "";
+      field = `<select data-i="${i}" data-sub="${sub}" data-book="${esc(book)}"><option value="">- 선택 -</option>${custom}${opts}</select>`;
+    } else {
+      field = `<input data-i="${i}" data-sub="${sub}" data-book="${esc(book)}" value="${esc(cur.code)}" placeholder="${esc(book||"교재 미지정")}">`;
+    }
+    // 과목 칸 바로 아래에 지난 진도 **3회**만 한 줄로. 흐름 전체는 위의 📜 최근 수업 표에서 봅니다.
+    // (8회를 전부 늘어놓으니 줄이 세 줄씩 접혀 카드가 읽기 어려웠습니다)
+    const hist = (r.recent||[]).filter(h => (h.progress||{})[sub]).slice(0, 3);
+    const pv = hist.length
+      ? `<div class="prev">↳ 지난 ${hist.map(h => `${esc(md(h.date))} ${esc(unitLabel(h.progress[sub]))}`).join("  ·  ")}</div>`
+      : "";
+    // 교재 바꾸기 — 그 과목 교재DB에 있는 것 중에서만 (없는 이름을 치면 진도가 멈춥니다)
+    const 고를것 = [...new Set([...(BOOKS[sub]||[]), ...(book?[book]:[])])];
+    const bkOpts = 고를것.map(n => `<option value="${esc(n)}"${n===book?" selected":""}>${esc(n)}</option>`).join("");
+    const bk = `<div class="bkrow">📕 <select data-bk="${i}" data-bksub="${sub}" title="교재를 다 끝냈으면 다음 권으로 바꾸세요">`
+      + `<option value="">- 교재 없음 -</option>${bkOpts}</select>`
+      + (book && !(TOC[book]||[]).length ? ` <span style="color:#b4472e">목차 없음</span>` : "") + `</div>`;
+    return `<div class="prow"><span class="k">${sub}</span>${field}</div>${bk}${pv}${linkNote(r, sub)}`;
+  }).join("");
+  return `<div class="card" data-i="${i}">
+    <div class="stuhead">
+      <a class="nm" href="/student_card.html?student_id=${encodeURIComponent(r.student_id)}" target="_blank"
+         title="학생 카드 — 지난 진도 쭉 보기">${esc(r.name)}</a>
+      ${r.record.check_in?`<span class="pill">🕒 등원 ${esc(r.record.check_in)}</span>`:(r.scheduled?`<span class="pill">예정 ${esc(r.scheduled)}</span>`:"")}
+      ${late} ${sent}<span id="rpill-${i}">${needsRetest(rec)?'<span class="pill late">🔁 재시 안내 대기</span>':""}</span>
+      <button class="btn" style="padding:5px 10px;font-size:12px" onclick="sendOne(${i})">📨 이 학생</button>
+      <span class="savemsg" id="save-${i}"></span>
+    </div>
+    ${histHtml(r, i)}
+    <div class="prog">${prog}</div>
+    <div class="grid">
+      <div class="fld"><label>지각/결석</label>${segHtml(i,"lateness",[{v:"정시",t:"정시"},{v:"지각",t:"지각"},{v:"결석",t:"결석"}],rec.lateness||"정시")}</div>
+      <div class="fld"><label>태도</label>${segHtml(i,"attitude",[{v:"상",t:"상"},{v:"중",t:"중"},{v:"하",t:"하"}],rec.attitude||"상")}</div>
+      <div class="fld"><label>과제</label>${segHtml(i,"homework",[{v:"상",t:"상"},{v:"중",t:"중"},{v:"하",t:"하"}],rec.homework||"상")}</div>
+      <div class="fld"><label>단어테스트</label>${segHtml(i,"voca_test",[{v:"통과",t:"통과"},{v:"불통과",t:"불통과"},{v:"",t:"없음"}],rec.voca_test||"")}</div>
+    </div>
+    <div class="grid">
+      <div class="fld"><label>단어테스트 점수</label><input class="score" data-i="${i}" data-field="voca_score" value="${esc(rec.voca_score||"")}" placeholder="예: 18/20">
+        <div class="rhint${/재시 안내 대상/.test(rec.retest_hint||"") ? " hit" : ""}" id="rhint-${i}">${esc(rec.retest_hint||"")}</div></div>
+    </div>
+    <div class="note parent"><label>추가사항 (학부모 카톡에 나가는 내용)</label><textarea data-i="${i}" data-field="parent_note">${esc(rec.parent_note||"")}</textarea></div>
+    <div class="note"><label>지적사항 (내부 기록 — 학부모에게 안 나감)</label><textarea data-i="${i}" data-field="note">${esc(rec.note||"")}</textarea></div>
+  </div>`;
+}
+
+// ── 세그먼트 클릭 ──
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".seg button"); if (!btn) return;
+  const seg = btn.parentElement;
+  seg.querySelectorAll("button").forEach(b=>b.classList.remove("on"));
+  btn.classList.add("on");
+  scheduleSave(Number(seg.dataset.i));
+});
+// ── 교재 바꾸기 ──
+//   학생DB·그날 행·진도(새 교재 1번)를 서버가 한꺼번에 맞춥니다. 되돌릴 수 없어서 한 번 묻습니다.
+document.addEventListener("change", async (e) => {
+  const sel = e.target;
+  if (!sel.dataset || sel.dataset.bk === undefined) return;
+  const i = Number(sel.dataset.bk), sub = sel.dataset.bksub, r = ROWS[i];
+  const 이전 = r.books[sub] || "";
+  const 새것 = sel.value;
+  if (새것 === 이전) return;
+  const 말 = 새것
+    ? `${r.name} 학생의 ${sub} 교재를 「${새것}」 으로 바꿀까요?\n\n· 다음 수업부터 이 교재로 진도가 나갑니다\n· 오늘 ${sub} 진도는 새 교재 목차 1번으로 바뀝니다`
+    : `${r.name} 학생의 ${sub} 교재를 비울까요? (그 과목 진도가 사라집니다)`;
+  if (!confirm(말)) { sel.value = 이전; return; }
+  const m = $("#save-"+i); if (m){ m.className="savemsg saving"; m.textContent="● 교재 바꾸는 중…"; }
+  try {
+    const d = await api({ action:"change-book", student_id:r.student_id, date:$("#date").value, subject:sub, book:새것 });
+    r.books = d.books || r.books;
+    r.record = { ...r.record, ...d.record };
+    if (m){ m.className="savemsg ok"; m.textContent="교재 바꿨어요 ✓"; }
+    render();
+  } catch(err){
+    sel.value = 이전;
+    if (m){ m.className="savemsg err"; m.textContent="실패: "+err.message; }
+  }
+});
+
+// ── 입력 변경 → 자동 저장 ──
+document.addEventListener("input", (e) => {
+  const el = e.target;
+  if (el.dataset && el.dataset.i !== undefined && (el.dataset.sub || el.dataset.field)) scheduleSave(Number(el.dataset.i));
+});
+
+const timers = {};
+function scheduleSave(i){
+  const m = $("#save-"+i); if (m){ m.className="savemsg saving"; m.textContent="● 저장 중…"; }
+  clearTimeout(timers[i]);
+  timers[i] = setTimeout(()=>saveRow(i), 700);
+}
+
+function collect(i){
+  const card = document.querySelector(`.card[data-i="${i}"]`);
+  const progress = {};
+  // select/input 모두 수용 → 코드로 목차에서 제목을 찾아 {code,title} 저장 (유닛 바꾸면 제목 자동)
+  card.querySelectorAll("[data-sub]").forEach(el => {
+    const code = (el.value||"").trim(); if (!code) return;
+    const book = el.dataset.book || "";
+    const hit = (TOC[book]||[]).map(normU).find(u => u.code === code);
+    progress[el.dataset.sub] = { code, title: hit ? hit.title : "" };
+  });
+  const seg = (f) => { const on = card.querySelector(`.seg[data-field="${f}"] button.on`); return on ? on.dataset.v : null; };
+  return {
+    lateness: seg("lateness"), attitude: seg("attitude"), homework: seg("homework"),
+    voca_test: seg("voca_test") || null,
+    voca_score: card.querySelector('[data-field="voca_score"]').value.trim() || null,
+    parent_note: card.querySelector('[data-field="parent_note"]').value,
+    note: card.querySelector('[data-field="note"]').value,
+    progress,
+  };
+}
+async function saveRow(i){
+  const r = ROWS[i]; const fields = collect(i);
+  const m = $("#save-"+i);
+  try {
+    const d = await api({ action:"save-record", student_id:r.student_id, date:$("#date").value, fields });
+    r.record = { ...r.record, ...d.record, needs_retest: d.needs_retest, retest_hint: d.retest_hint };
+    // 점수만 적어도 재시 대상이 되므로, 저장될 때마다 점수칸 안내와
+    // 「🔁 재시 안내 (n)」 숫자를 서버 판정으로 다시 그립니다.
+    // (예전에는 여기서 다시 안 그려서, 불통과를 눌러도 버튼 숫자가 새로고침 전까지 옛 값이었습니다)
+    const h = $("#rhint-"+i);
+    if (h){ h.textContent = d.retest_hint || ""; h.className = "rhint" + (/재시 안내 대상/.test(d.retest_hint||"") ? " hit" : ""); }
+    const p = $("#rpill-"+i);
+    if (p) p.innerHTML = needsRetest(r.record) ? '<span class="pill late">🔁 재시 안내 대기</span>' : "";
+    renderRetestBtn();
+    if (m){ m.className="savemsg ok"; m.textContent="저장됨 ✓"; setTimeout(()=>{ if(m.textContent==="저장됨 ✓") m.textContent=""; }, 2000); }
+  } catch(e){ if (m){ m.className="savemsg err"; m.textContent="저장 실패: "+e.message; } }
+}
+
+$("#reload").onclick = load;
+$("#date").addEventListener("change", load);
+
+// ── 보강 학생 추가 (정규 수업일 아닌 날 온 학생) ──
+$("#addBtn").onclick = async () => {
+  const sel = $("#addStu");
+  if (sel.style.display === "none") {
+    try {
+      const res = await fetch("/api/attendance?action=students"); const d = await res.json();
+      const inList = new Set(ROWS.map(r => r.student_id));
+      const opts = (d.students||[]).filter(s => s.status === "재원" && !inList.has(s.id));
+      if (!opts.length){ alert("추가할 학생이 없어요 (모두 이미 목록에 있음)."); return; }
+      sel.innerHTML = `<option value="">보강 학생 선택…</option>` + opts.map(s => `<option value="${s.id}">${esc(s.name)}${s.grade?(" ("+esc(s.grade)+")"):""}</option>`).join("");
+      sel.style.display = "";
+    } catch(e){ alert(e.message); }
+    return;
+  }
+};
+$("#addStu").addEventListener("change", async (e) => {
+  const id = e.target.value; if (!id) return;
+  try {
+    await api({ action:"add-row", student_id:id, date:$("#date").value });
+    e.target.style.display = "none"; e.target.value = "";
+    await load();
+  } catch(err){ alert(err.message); }
+});
+
+// ── 발송 (미리보기 → 선택 → 발송) ──
+async function openSend(studentIds){
+  $("#sendResult").textContent = "";
+  try {
+    const d = await api({ action:"send-daily", date:$("#date").value, dryRun:true, student_ids:studentIds||null, teacher:TEACHER||undefined });
+    PREVIEW = d.results || [];
+    if (!PREVIEW.length){ alert("발송할 리포트가 없어요."); return; }
+    // 1차(노션 알림톡) 템플릿을 쓰시면 카톡에 과목별 교재·진도 줄이 들어갑니다.
+    // 그게 '-' 로 나가면 학생DB books/progress 의 **과목 키 이름**이 템플릿 변수명과 다른 것.
+    // 보내기 전에 여기서 확인할 수 있게 미리보기에 같이 보여줍니다.
+    $("#sendSub").textContent = `${d.date} — 대상 ${PREVIEW.length}명` + (d.solapi?"":" · ⚠️ 솔라피(TPL_DAILY) 미설정 상태라 실제 발송은 안 됩니다");
+    $("#sendList").innerHTML = PREVIEW.map((p,idx) => {
+      const dis = !p.ok && p.reason==="연락처 없음";
+      const checked = p.ok && !p.already ? "checked" : (p.ok && p.already ? "" : "");
+      return `<label class="srow${dis?" off":""}">
+        <input type="checkbox" data-idx="${idx}" ${dis?"disabled":checked}>
+        <div class="info"><b>${esc(p.name)}</b> ${p.already?'<span class="pill sent">이미 전송</span>':""} ${dis?'<span class="pill late">연락처 없음</span>':""}
+          <div class="l2">진도: ${esc(p.progress||"-")} · 태도 ${esc(p.attitude)} · 과제 ${esc(p.homework)} · 단어 ${esc(p.voca)}${p.parent_note?` · 추가: ${esc(p.parent_note)}`:""}</div>
+          <div class="l2">${p.phone?("학부모 "+esc(p.phone)):'<span style="color:var(--absent)">학부모 연락처 없음</span>'}</div>
+          ${subjLine(p.vars)}
+        </div></label>`;
+    }).join("");
+    $("#overlay").classList.add("on");
+  } catch(e){ alert(e.message); }
+}
+$("#send").onclick = () => openSend(null);
+function sendOne(i){ openSend([ROWS[i].student_id]); }
+$("#cancelSend").onclick = () => $("#overlay").classList.remove("on");
+$("#doSend").onclick = async () => {
+  const ids = Array.from(document.querySelectorAll("#sendList input[type=checkbox]:checked")).map(c => PREVIEW[Number(c.dataset.idx)].student_id);
+  if (!ids.length){ alert("보낼 학생을 선택하세요."); return; }
+  const btn = $("#doSend"); btn.disabled = true; btn.textContent = "발송 중…";
+  try {
+    const d = await api({ action:"send-daily", date:$("#date").value, student_ids:ids, teacher:TEACHER||undefined });
+    const fails = (d.results||[]).filter(x=>!x.ok);
+    $("#sendResult").innerHTML = `발송 완료 — ${d.sent}/${d.total}건 성공` +
+      (fails.length? "<br>실패: " + fails.map(f=>esc(f.name)+"("+esc(f.reason||"")+")").join(", ") : "") +
+      (!d.solapi? "<br>⚠️ 솔라피 미설정으로 실제 발송은 되지 않았어요." : "");
+    load();
+  } catch(e){ $("#sendResult").textContent = "오류: " + e.message; }
+  finally { btn.disabled = false; btn.textContent = "발송"; }
+};
+
+// ── 🔁 재시 안내 발송 (미리보기 → 선택 → 발송) ──
+// 데일리 리포트 카톡과 **다른 템플릿**(TPL_RETEST)으로 나갑니다 — 단어를 못 넘긴 학생만.
+// 대상 판정은 서버(lib/retest.js)가 합니다 — 「불통과」 버튼 또는 점수 기준 미달.
+let RPREVIEW = [];
+$("#retest").onclick = async () => {
+  $("#rResult").textContent = "";
+  try {
+    const d = await api({ action:"send-retest", date:$("#date").value, dryRun:true, teacher:TEACHER||undefined });
+    RPREVIEW = d.results || [];
+    if (!RPREVIEW.length){ alert("재시 안내를 보낼 학생이 없어요."); load(); return; }
+    $("#rSub").textContent = `${d.date} — 단어테스트 못 넘긴 ${RPREVIEW.length}명`
+      + (d.pass ? ` (「불통과」 누른 학생 + 점수 ${d.pass}% 미달)` : "")
+      + (d.solapi ? "" : " · ⚠️ TPL_RETEST(재시 안내 템플릿) 미설정 상태라 실제 발송은 안 됩니다");
+    $("#rList").innerHTML = RPREVIEW.map((p, idx) => {
+      const dis = !p.ok && p.reason === "연락처 없음";
+      return `<label class="srow${dis?" off":""}">
+        <input type="checkbox" data-idx="${idx}" ${dis?"disabled":(p.already?"":"checked")}>
+        <div class="info"><b>${esc(p.name)}</b> ${p.already?'<span class="pill sent">이미 전송</span>':""} ${dis?'<span class="pill late">연락처 없음</span>':""}
+          <div class="l2">단어 ${esc(p.book)} · ${esc(p.unit)} · 점수 ${esc(p.score)}</div>
+          <div class="l2">${p.phone?("학부모 "+esc(p.phone)):'<span style="color:var(--absent)">학부모 연락처 없음</span>'}</div>
+        </div></label>`;
+    }).join("");
+    $("#rOverlay").classList.add("on");
+  } catch(e){ alert(e.message); }
+};
+$("#rCancel").onclick = () => $("#rOverlay").classList.remove("on");
+$("#rDoSend").onclick = async () => {
+  const ids = Array.from(document.querySelectorAll("#rList input[type=checkbox]:checked"))
+    .map(c => RPREVIEW[Number(c.dataset.idx)].student_id);
+  if (!ids.length){ alert("보낼 학생을 선택하세요."); return; }
+  const btn = $("#rDoSend"); btn.disabled = true; btn.textContent = "발송 중…";
+  try {
+    const d = await api({ action:"send-retest", date:$("#date").value, student_ids:ids, teacher:TEACHER||undefined });
+    const fails = (d.results||[]).filter(x => !x.ok);
+    $("#rResult").innerHTML = `발송 완료 — ${d.sent}/${d.total}건 성공`
+      + (fails.length ? "<br>실패: " + fails.map(f => esc(f.name)+"("+esc(f.reason||"")+")").join(", ") : "")
+      + (!d.solapi ? "<br>⚠️ TPL_RETEST 미설정으로 실제 발송은 되지 않았어요." : "");
+    load();
+  } catch(e){ $("#rResult").textContent = "오류: " + e.message; }
+  finally { btn.disabled = false; btn.textContent = "발송"; }
+};
+
+(async () => { await loadToc(); load(); })();
+</script>
+</body>
+</html>

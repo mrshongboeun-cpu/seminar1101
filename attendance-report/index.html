@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>학원 자동화</title>
+<style>
+  :root { --line:#e5e2da; --ink:#1f2328; --muted:#6b7280; --green:#1f7a70; --bg:#faf9f6; }
+  body { margin:0; background:var(--bg); color:var(--ink); min-height:100vh;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
+  main { max-width:640px; margin:0 auto; padding:48px 20px; }
+  h1 { font-size:24px; margin:0 0 6px; }
+  .sub { color:var(--muted); margin-bottom:28px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  a.card { display:block; background:#fff; border:1px solid var(--line); border-radius:14px; padding:20px; text-decoration:none; color:inherit; transition:transform .1s; }
+  a.card:hover { transform:translateY(-2px); }
+  .emoji { font-size:26px; } .t { font-weight:800; margin-top:8px; } .d { color:var(--muted); font-size:13px; margin-top:2px; }
+</style>
+<script src="/config.js"></script>
+</head>
+<body>
+<main>
+  <div data-academy style="font-weight:900;color:var(--green);margin-bottom:2px"></div>
+  <h1>학원 자동화</h1>
+  <div class="sub">출결부터 월말평가서까지 — Vercel + Supabase + Claude</div>
+  <div class="grid">
+    <a class="card" href="/kiosk.html"><div class="emoji">🔑</div><div class="t">출결 키오스크</div><div class="d">학생 PIN 등·하원</div></a>
+    <a class="card" href="/board.html"><div class="emoji">🖥</div><div class="t">출결 현황판</div><div class="d">오늘 등원·하원·미등원 실시간</div></a>
+    <a class="card" href="/daily.html"><div class="emoji">📝</div><div class="t">데일리 리포트</div><div class="d">진도·태도 작성 → 학부모 카톡</div></a>
+    <a class="card" href="/students.html"><div class="emoji">👥</div><div class="t">학생 관리</div><div class="d">등록·수정·일괄등록</div></a>
+    <a class="card" href="/student_card.html"><div class="emoji">📋</div><div class="t">학생 카드</div><div class="d">한 학생의 지난 진도·테스트·과제 쭉</div></a>
+    <a class="card" href="/books.html"><div class="emoji">📚</div><div class="t">교재 · 목차</div><div class="d">목차 넣으면 진도 자동 전환</div></a>
+    <a class="card" href="/report.html"><div class="emoji">📄</div><div class="t">월말평가서</div><div class="d">AI 생성·학부모 링크</div></a>
+    <a class="card" href="/teacher.html"><div class="emoji">👩‍🏫</div><div class="t">선생님앱</div><div class="d">내 담당 학생 · 과제 내주기</div></a>
+    <a class="card" href="/student.html"><div class="emoji">🎒</div><div class="t">학생앱</div><div class="d">학생이 폰으로 과제 체크·진도 확인</div></a>
+    <a class="card" href="/import.html"><div class="emoji">⤵️</div><div class="t">노션 불러오기</div><div class="d">기존 노션 데이터 이관</div></a>
+    <a class="card" href="/manual.html" style="grid-column:1/-1"><div class="emoji">📖</div><div class="t">선생님용 사용설명서</div><div class="d">매일 쓰는 법 · 결석·보강 · 교재와 진도 넣기</div></a>
+    <a class="card" href="/handout.html" style="grid-column:1/-1"><div class="emoji">📘</div><div class="t">세미나 실습 소책자</div><div class="d">설치·사용·바이브코딩 가이드 (핸드아웃)</div></a>
+  </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>월말평가서 생성</title>
+  <!-- 2차 세미나 monthly_report.html 구조 이식 (새로 생성 / 기존 수정 탭, 데이터는 Supabase) -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Noto Sans KR', -apple-system, sans-serif; background: #f0f2f5; color: #333; }
+    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px 24px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 12px rgba(102,126,234,0.3); }
+    .header h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    .header-sub { font-size: 13px; opacity: 0.9; } .header-sub a { color: #fff; }
+    .content { max-width: 800px; margin: 0 auto; padding: 20px; }
+    .card { background: white; border-radius: 14px; padding: 24px; margin-bottom: 16px; box-shadow: 0 1px 6px rgba(0,0,0,0.06); }
+    .card-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .form-label { display: block; font-size: 13px; font-weight: 500; color: #555; margin-bottom: 6px; }
+    .form-select, .form-input, .form-textarea { width: 100%; padding: 10px 14px; border: 1.5px solid #e0e0e0; border-radius: 10px; font-size: 14px; font-family: inherit; color: #333; background: #fafafa; }
+    .form-select:focus, .form-input:focus, .form-textarea:focus { outline: none; border-color: #667eea; background: white; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
+    .form-textarea { min-height: 90px; resize: vertical; line-height: 1.6; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .checkbox-group { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #f8f9ff; border-radius: 10px; cursor: pointer; margin-top: 12px; }
+    .checkbox-group input { width: 18px; height: 18px; accent-color: #667eea; }
+    .btn-primary { width: 100%; padding: 14px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; font-family: inherit; cursor: pointer; }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-secondary { padding: 10px 20px; background: white; color: #667eea; border: 1.5px solid #667eea; border-radius: 10px; font-size: 14px; font-family: inherit; cursor: pointer; }
+    .btn-icon { padding: 8px 14px; background: #f0f2f5; border: none; border-radius: 8px; font-size: 13px; font-family: inherit; cursor: pointer; color: #555; }
+    /* 탭 */
+    .tab-row { display: flex; gap: 8px; margin-bottom: 16px; }
+    .tab-item { flex: 1; padding: 12px; border: 1.5px solid #e0e0e0; border-radius: 10px; font-size: 14px; font-weight: 500; font-family: inherit; cursor: pointer; text-align: center; background: white; color: #555; }
+    .tab-item.active { border-color: #667eea; background: #667eea; color: white; }
+    /* 차트 */
+    .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .chart-box { background: white; border-radius: 14px; padding: 20px; box-shadow: 0 1px 6px rgba(0,0,0,0.06); }
+    .chart-box-title { font-size: 13px; font-weight: 600; color: #555; margin-bottom: 12px; text-align: center; }
+    .donut-wrap { position: relative; width: 140px; height: 140px; margin: 0 auto; }
+    .donut-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; }
+    .donut-center .num { font-size: 28px; font-weight: 700; } .donut-center .unit { font-size: 11px; color: #888; }
+    .donut-legend { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin-top: 10px; font-size: 11px; color: #666; }
+    .progress-card { display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: #f8f9ff; border-radius: 10px; margin-bottom: 8px; }
+    .progress-card .p-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+    .progress-card .p-icon.문법 { background: #e3f2fd; } .progress-card .p-icon.리딩 { background: #e8f5e9; } .progress-card .p-icon.단어 { background: #fff3e0; }
+    .progress-card .p-title { font-size: 13px; font-weight: 600; } .progress-card .p-detail { font-size: 12px; color: #777; margin-top: 2px; }
+    .progress-card .p-change { font-size: 11px; color: #667eea; margin-top: 3px; font-weight: 500; }
+    .transition-badge { display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg,#667eea20,#764ba220); border: 1px solid #667eea40; border-radius: 8px; padding: 6px 12px; font-size: 12px; color: #5c6bc0; margin: 4px; }
+    .transition-badge .arrow { color: #667eea; font-weight: 700; }
+    .preview-section, .result-section { display: none; }
+    .preview-section.show, .result-section.show { display: block; }
+    .report-preview { background: #fafafa; border: 1px solid #e0e0e0; border-radius: 10px; padding: 20px; font-size: 14px; line-height: 1.9; max-height: 420px; overflow-y: auto; white-space: pre-wrap; }
+    .report-edit-area { width: 100%; min-height: 360px; padding: 20px; border: 1.5px solid #667eea; border-radius: 10px; font-size: 14px; line-height: 1.9; font-family: inherit; background: white; resize: vertical; }
+    .result-success { background: linear-gradient(135deg,#e8f5e9,#f1f8e9); border-radius: 14px; padding: 20px; text-align: center; margin-bottom: 16px; }
+    .result-icon { font-size: 40px; } .result-title { font-size: 17px; font-weight: 600; color: #2e7d32; margin-top: 6px; }
+    .result-subtitle { font-size: 13px; color: #558b2f; margin-top: 4px; }
+    .link { font-size: 13px; color: #667eea; word-break: break-all; margin-top: 8px; }
+    .no-data { text-align: center; padding: 24px; color: #999; font-size: 14px; }
+    .rli { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #f8f9ff; border-radius: 10px; margin-bottom: 8px; cursor: pointer; border: 1.5px solid transparent; }
+    .rli:hover { border-color: #667eea; background: #f0f2ff; }
+    .rli .m { font-weight: 600; } .rli .meta { font-size: 12px; color: #888; margin-top: 2px; }
+    .badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #eef4ff; color: #667eea; margin-left: 6px; }
+    .spinner { width: 44px; height: 44px; border: 4px solid #f0f0f0; border-top-color: #667eea; border-radius: 50%; animation: spin .8s linear infinite; margin: 20px auto; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:200; align-items:center; justify-content:center; }
+    .overlay.show { display:flex; }
+    .modal { background:#fff; border-radius:16px; padding:28px; width:90%; max-width:360px; text-align:center; }
+    .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px); background: #333; color: white; padding: 12px 24px; border-radius: 10px; font-size: 14px; z-index: 300; transition: transform .3s, visibility 0s .3s; visibility: hidden; }
+    .toast.show { transform: translateX(-50%) translateY(0);  visibility: visible; transition: transform .3s; } .toast.error { background: #d32f2f; } .toast.success { background: #2e7d32; }
+    @media (max-width: 520px) { .form-row { grid-template-columns: 1fr; } .chart-row { grid-template-columns: 1fr; } }
+  </style>
+  <script src="/config.js"></script>
+</head>
+<body>
+  <div class="header">
+    <h1><span data-academy></span> 📋 월말평가서 생성</h1>
+    <div class="header-sub">데일리리포트 집계 · Claude AI 작성 · 학부모 열람 링크 &nbsp;·&nbsp;
+      <a href="/" title="홈으로">🏠 홈</a> <a href="/board.html">현황판</a> <a href="/daily.html">데일리 리포트</a> <a href="/students.html">학생관리</a> <a href="/books.html">교재</a>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="tab-row">
+      <div class="tab-item active" id="tabNew" onclick="switchTab('new')">📝 새로 생성</div>
+      <div class="tab-item" id="tabEdit" onclick="switchTab('edit')">📂 기존 수정</div>
+    </div>
+
+    <!-- ===== 새로 생성 ===== -->
+    <div id="setupSection">
+      <div class="card">
+        <div class="card-title">👤 학생 및 기간</div>
+        <div class="form-row">
+          <div><label class="form-label">학생</label>
+            <select class="form-select" id="studentSelect" onchange="onChange()"><option value="">선택하세요</option></select></div>
+          <div><label class="form-label">월</label>
+            <input type="month" class="form-input" id="month" onchange="onChange()"></div>
+        </div>
+        <div class="checkbox-group" onclick="var c=this.querySelector('input');c.checked=!c.checked;">
+          <input type="checkbox" id="middleSchool" onclick="event.stopPropagation()">
+          <label>중학생 — 내신·서술형 대비 내용 포함</label>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">✏️ 선생님 참고사항 <span style="font-size:12px;color:#999;font-weight:400">(선택)</span></div>
+        <textarea class="form-textarea" id="teacherComment" placeholder="AI가 참고할 내용&#10;예: 발표에 적극적 / 단어 암기 싫어함 / 수동태 어려워함"></textarea>
+        <div style="font-size:12px;color:#999;margin-top:6px">비워두면 월말참고사항DB(monthly_comments)의 내용을 사용합니다.</div>
+      </div>
+      <div class="preview-section" id="previewSection">
+        <div class="chart-row">
+          <div class="chart-box"><div class="chart-box-title">📌 출석 현황</div>
+            <div class="donut-wrap"><canvas id="attendChart" width="140" height="140"></canvas>
+              <div class="donut-center"><div class="num" id="attendNum">0</div><div class="unit">총 수업일</div></div></div>
+            <div class="donut-legend" id="attendLegend"></div></div>
+          <div class="chart-box"><div class="chart-box-title">🎯 수업 태도</div>
+            <div class="donut-wrap"><canvas id="attitudeChart" width="140" height="140"></canvas>
+              <div class="donut-center"><div class="num" id="attitudeNum">0%</div><div class="unit">상 비율</div></div></div>
+            <div class="donut-legend" id="attitudeLegend"></div></div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-box"><div class="chart-box-title">📝 단어 테스트</div>
+            <div class="donut-wrap"><canvas id="wordChart" width="140" height="140"></canvas>
+              <div class="donut-center"><div class="num" id="wordNum">0%</div><div class="unit">통과율</div></div></div>
+            <div class="donut-legend" id="wordLegend"></div></div>
+          <div class="chart-box"><div class="chart-box-title">📚 과제 수행도</div>
+            <div class="donut-wrap"><canvas id="hwChart" width="140" height="140"></canvas>
+              <div class="donut-center"><div class="num" id="hwNum">0%</div><div class="unit">상 비율</div></div></div>
+            <div class="donut-legend" id="hwLegend"></div></div>
+        </div>
+        <div class="card"><div class="card-title">📍 현재 진도</div><div id="progressCards"></div></div>
+        <div class="card" id="transitionCard" style="display:none"><div class="card-title">🔄 이번 달 교재 전환</div><div id="transitionBadges"></div></div>
+      </div>
+      <div class="card" style="padding:16px">
+        <button class="btn-primary" id="generateBtn" onclick="generate()" disabled>🚀 평가서 생성하기</button>
+      </div>
+    </div>
+
+    <!-- ===== 기존 수정 ===== -->
+    <div id="editSection" style="display:none">
+      <div class="card">
+        <div class="card-title">📨 월말평가서 카톡 일괄 발송</div>
+        <div class="form-row">
+          <div><label class="form-label">발송 월</label><input type="month" class="form-input" id="sendMonth"></div>
+          <div style="display:flex;align-items:flex-end"><button class="btn-secondary" style="width:100%" onclick="sendMonth()">미전송 학부모에게 일괄 발송</button></div>
+        </div>
+        <div style="font-size:12px;color:#999;margin-top:8px">그 달 저장된 평가서 중 <b>아직 안 보낸 학부모</b>에게만 발송해요. (개별 발송은 아래에서 학생 열람 → 📨 학부모 카톡)</div>
+      </div>
+      <div class="card">
+        <div class="card-title">👤 학생 선택</div>
+        <select class="form-select" id="editStudentSelect" onchange="loadStudentReports()"><option value="">선택하세요</option></select>
+      </div>
+      <div class="card" id="existingCard" style="display:none">
+        <div class="card-title">📋 저장된 평가서</div>
+        <div id="existingList"></div>
+      </div>
+    </div>
+
+    <!-- ===== 결과/열람/수정 (공용) ===== -->
+    <div class="result-section" id="resultSection">
+      <div class="result-success"><div class="result-icon" id="resultIcon">✅</div><div class="result-title" id="resultTitle">평가서</div>
+        <div class="result-subtitle" id="resultSubtitle"></div></div>
+      <!-- 열람 시 저장된 통계로 그래프도 -->
+      <div id="resultCharts"></div>
+      <div class="card">
+        <div class="card-title">👁️ 미리보기
+          <div style="margin-left:auto;display:flex;gap:8px">
+            <button class="btn-icon" id="editBtn" onclick="startEdit()">✏️ 수정</button>
+            <button class="btn-icon" onclick="copyReport()">📋 복사</button>
+          </div>
+        </div>
+        <div id="viewMode"><div class="report-preview" id="reportPreview"></div></div>
+        <div id="editMode" style="display:none"><textarea class="report-edit-area" id="reportEditArea"></textarea></div>
+        <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+          <button class="btn-primary" id="saveBtn" style="flex:1" onclick="save()">💾 저장 (학부모 링크 생성)</button>
+          <button class="btn-icon" id="kakaoBtn" style="display:none" onclick="sendKakao()">📨 학부모 카톡</button>
+          <button class="btn-icon" id="deleteBtn" style="display:none;color:#d32f2f" onclick="deleteCur()">🗑 삭제</button>
+          <button class="btn-secondary" onclick="closeResult()">← 목록</button>
+        </div>
+        <div class="link" id="parentLink" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay"><div class="modal"><div class="spinner"></div>
+    <div style="font-weight:600">평가서 생성 중...</div><div style="font-size:12px;color:#999;margin-top:6px">데이터 집계 → Claude 작성</div></div></div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    var $ = function(id){ return document.getElementById(id); };
+    var STUDENTS = [], TAB = 'new';
+    var curStudentId = '', curMonth = '', curBody = '', curStats = null, curProgress = null, curSaved = false;
+
+    (function initMonth(){ var d=new Date(); d.setMonth(d.getMonth()-1); var m=d.toISOString().slice(0,7); $('month').value=m; $('sendMonth').value=m; })();
+
+    async function api(payload){
+      var r = await fetch('/api/report', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+      var d = await r.json(); if (!r.ok) throw new Error(d.error||'요청 실패'); return d;
+    }
+    function esc(s){ return (s ?? '').toString().replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
+    function toast(m,t){ var e=$('toast'); e.textContent=m; e.className='toast '+(t||''); e.classList.add('show'); setTimeout(function(){e.classList.remove('show');},3000); }
+
+    function switchTab(tab){
+      TAB = tab;
+      $('tabNew').className = 'tab-item' + (tab==='new'?' active':'');
+      $('tabEdit').className = 'tab-item' + (tab==='edit'?' active':'');
+      $('setupSection').style.display = tab==='new' ? 'block' : 'none';
+      $('editSection').style.display = tab==='edit' ? 'block' : 'none';
+      $('resultSection').classList.remove('show');
+      if (tab==='edit') loadEditStudents(); // 최신 목록으로
+    }
+
+    async function loadStudents(){
+      var r = await fetch('/api/report?action=students&month='+$('month').value);
+      var d = await r.json(); if (!r.ok){ toast(d.error,'error'); return; }
+      STUDENTS = d.students || [];
+      // 새로 생성 탭: 전체 재원 학생
+      var sel = $('studentSelect'); var keep = sel.value;
+      sel.innerHTML = '<option value="">선택하세요</option>';
+      STUDENTS.forEach(function(s){ var o=document.createElement('option'); o.value=s.id; o.textContent=s.name+(s.grade?(' ('+s.grade+')'):''); sel.appendChild(o); });
+      sel.value = keep;
+      loadEditStudents();
+    }
+    // 기존 수정 탭: 평가서가 하나라도 있는 학생만
+    async function loadEditStudents(){
+      try {
+        var r = await fetch('/api/report?action=students-with-reports');
+        var d = await r.json(); if (!r.ok) return;
+        var sel = $('editStudentSelect'); var keep = sel.value;
+        var list = d.students || [];
+        sel.innerHTML = list.length ? '<option value="">선택하세요</option>' : '<option value="">저장된 평가서가 있는 학생이 없어요</option>';
+        list.forEach(function(s){ var o=document.createElement('option'); o.value=s.id; o.textContent=s.name+(s.grade?(' ('+s.grade+')'):''); sel.appendChild(o); });
+        sel.value = keep;
+      } catch(e){}
+    }
+
+    // ===== 새로 생성 =====
+    function onChange(){
+      var id = $('studentSelect').value, month = $('month').value;
+      $('generateBtn').disabled = !(id && month);
+      $('resultSection').classList.remove('show');
+      if (id && month) loadPreview(); else $('previewSection').classList.remove('show');
+    }
+    async function loadPreview(){
+      try {
+        var d = await api({ action:'preview', student_id:$('studentSelect').value, month:$('month').value });
+        renderCharts(d.planner, 'attend','attitude','word','hw', 'attendNum','attitudeNum','wordNum','hwNum','attendLegend','attitudeLegend','wordLegend','hwLegend','progressCards','transitionCard','transitionBadges');
+        $('previewSection').classList.add('show');
+        if (!d.hasRecords) toast('이 달 데일리리포트 기록이 없어요 (차트가 0으로 보입니다)', '');
+      } catch(e){ toast(e.message,'error'); }
+    }
+    async function generate(){
+      $('overlay').classList.add('show');
+      try {
+        var d = await api({ action:'generate', student_id:$('studentSelect').value, month:$('month').value,
+          comment: $('teacherComment').value.trim(), middleSchool: $('middleSchool').checked });
+        openResult({ studentId:$('studentSelect').value, month:$('month').value, body:d.body, stats:d.stats, progress:d.progress, planner:d.planner, saved:false, isNew:true });
+      } catch(e){ toast(e.message,'error'); }
+      finally { $('overlay').classList.remove('show'); }
+    }
+
+    // ===== 기존 수정 =====
+    async function loadStudentReports(){
+      var id = $('editStudentSelect').value;
+      if (!id){ $('existingCard').style.display='none'; return; }
+      $('existingCard').style.display='block';
+      $('existingList').innerHTML = '<div class="no-data">불러오는 중...</div>';
+      try {
+        var d = await api({ action:'student-reports', student_id:id });
+        if (!d.reports.length){ $('existingList').innerHTML = '<div class="no-data">저장된 평가서가 없습니다</div>'; return; }
+        $('existingList').innerHTML = d.reports.map(function(r){
+          var st = r.stats||{}; var parts = r.month.split('-');
+          var label = parts[0]+'년 '+parseInt(parts[1])+'월';
+          return '<div class="rli" onclick="openSaved(\''+id+'\',\''+r.month+'\')">'+
+            '<div><div class="m">'+label+(r.kakao_sent?'<span class="badge">카톡 전송</span>':'')+'</div>'+
+            '<div class="meta">출석 '+(st.classDays||0)+'일 · 단어 '+(st.vocaRate||0)+'% · 과제(상) '+(st.hwRate||0)+'%</div></div>'+
+            '<button class="btn-icon" onclick="event.stopPropagation();openSaved(\''+id+'\',\''+r.month+'\')">열람</button></div>';
+        }).join('');
+      } catch(e){ $('existingList').innerHTML = '<div class="no-data">'+esc(e.message)+'</div>'; }
+    }
+    window.openSaved = async function(id, month){
+      try {
+        var d = await api({ action:'get', student_id:id, month:month });
+        var r = d.report;
+        openResult({ studentId:id, month:month, body:r.body, stats:r.stats, progress:r.progress, share_token:r.share_token, saved:true, isNew:false });
+      } catch(e){ toast(e.message,'error'); }
+    };
+
+    // ===== 결과/열람 공용 =====
+    function openResult(o){
+      curStudentId=o.studentId; curMonth=o.month; curBody=o.body||''; curStats=o.stats||null; curProgress=o.progress||null; curSaved=!!o.saved;
+      var stu = STUDENTS.find(function(s){ return s.id===o.studentId; });
+      $('resultIcon').textContent = o.isNew ? '✅' : '📄';
+      $('resultTitle').textContent = (stu?stu.name:'') + ' ' + o.month + ' 학습 리포트';
+      var st = o.stats||{};
+      $('resultSubtitle').textContent = '출석 '+(st.classDays||0)+'일 · 단어 '+(st.vocaRate||0)+'% · 과제(상) '+(st.hwRate||0)+'%';
+      $('reportPreview').textContent = curBody;
+      $('viewMode').style.display='block'; $('editMode').style.display='none'; $('editBtn').style.display='';
+      $('deleteBtn').style.display = curSaved ? '' : 'none';
+      $('kakaoBtn').style.display = curSaved ? '' : 'none';
+      $('parentLink').style.display='none';
+      if (curSaved && o.share_token) showLink(o.share_token);
+      // 열람 시 저장된 통계로 결과 그래프
+      renderResultCharts(o.planner, st, o.progress);
+      $('resultSection').classList.add('show');
+      $('resultSection').scrollIntoView({behavior:'smooth'});
+    }
+    function showLink(tk){
+      var url = location.origin + '/parent.html?t=' + tk;
+      $('parentLink').style.display='block';
+      $('parentLink').innerHTML = '학부모 열람 링크: <a href="'+url+'" target="_blank">'+esc(url)+'</a>';
+    }
+    function renderResultCharts(planner, stats, progress){
+      // planner가 있으면(생성 직후) 그걸로, 없으면(열람) 저장 통계로 근사 planner 생성
+      var p = planner;
+      if (!p && stats){
+        var cd=stats.classDays||0, late=stats.late||0, absent=stats.absent||0, total=cd+absent;
+        var top=function(rate){ var s=Math.round((rate||0)/100*total); return {상:s,중:Math.max(0,total-s),하:0}; };
+        var vp=Math.round((stats.vocaRate||0)/100*total);
+        p = { 총수업일수:total, 출석:{정시등원:Math.max(0,cd-late),지각:late,결석:absent},
+          태도:top(stats.atRate), 과제:top(stats.hwRate),
+          단어테스트:{총횟수:total,통과:vp,미통과:Math.max(0,total-vp)}, 월초진도:{}, 최종진도:progress||{}, 교재전환:[] };
+      }
+      var box = $('resultCharts');
+      if (!p){ box.innerHTML=''; return; }
+      box.innerHTML =
+        '<div class="chart-row">'+cbox('📌 출석 현황','rA',p.총수업일수,'총 수업일')+cbox('🎯 수업 태도','rT',rate(p.태도)+'%','상 비율')+'</div>'+
+        '<div class="chart-row">'+cbox('📝 단어 테스트','rW',(p.단어테스트.총횟수>0?Math.round(p.단어테스트.통과/p.단어테스트.총횟수*100):0)+'%','통과율')+cbox('📚 과제 수행도','rH',rate(p.과제)+'%','상 비율')+'</div>';
+      setTimeout(function(){
+        drawDonut('rA',[p.출석.정시등원,p.출석.지각,p.출석.결석],['#4caf50','#ff9800','#f44336']); lg('rA',['정시 '+p.출석.정시등원,'지각 '+p.출석.지각,'결석 '+p.출석.결석],['#4caf50','#ff9800','#f44336']);
+        drawDonut('rT',[p.태도.상,p.태도.중,p.태도.하],['#667eea','#90caf9','#e0e0e0']); lg('rT',['상 '+p.태도.상,'중 '+p.태도.중,'하 '+p.태도.하],['#667eea','#90caf9','#e0e0e0']);
+        drawDonut('rW',[p.단어테스트.통과,p.단어테스트.미통과],['#667eea','#e0e0e0']); lg('rW',['통과 '+p.단어테스트.통과,'미통과 '+p.단어테스트.미통과],['#667eea','#e0e0e0']);
+        drawDonut('rH',[p.과제.상,p.과제.중,p.과제.하],['#4caf50','#ff9800','#f44336']); lg('rH',['상 '+p.과제.상,'중 '+p.과제.중,'하 '+p.과제.하],['#4caf50','#ff9800','#f44336']);
+      }, 40);
+    }
+    function cbox(title,id,num,unit){ return '<div class="chart-box"><div class="chart-box-title">'+title+'</div><div class="donut-wrap"><canvas id="c_'+id+'" width="140" height="140"></canvas><div class="donut-center"><div class="num">'+num+'</div><div class="unit">'+unit+'</div></div></div><div class="donut-legend" id="lg_'+id+'"></div></div>'; }
+    function rate(o){ var t=(o.상||0)+(o.중||0)+(o.하||0); return t>0?Math.round(o.상/t*100):0; }
+    function lg(id,labels,cols){ var el=$('lg_'+id); if(el) el.innerHTML=labels.map(function(t,i){return '<span style="color:'+cols[i]+'">●</span> '+esc(t);}).join(' '); }
+
+    function startEdit(){ $('viewMode').style.display='none'; $('editMode').style.display='block'; $('editBtn').style.display='none'; $('reportEditArea').value=curBody; $('reportEditArea').focus(); }
+    function copyReport(){ if(navigator.clipboard) navigator.clipboard.writeText(curBody).then(function(){toast('복사됨','success');}); }
+    async function save(){
+      if ($('editMode').style.display==='block') curBody = $('reportEditArea').value.trim();
+      var btn=$('saveBtn'); btn.disabled=true; btn.textContent='저장 중...';
+      try {
+        var d = await api({ action:'save', student_id:curStudentId, month:curMonth, body:curBody, stats:curStats, progress:curProgress });
+        curSaved=true; $('deleteBtn').style.display=''; $('kakaoBtn').style.display=''; showLink(d.share_token);
+        $('editMode').style.display='none'; $('viewMode').style.display='block'; $('editBtn').style.display='';
+        $('reportPreview').textContent = curBody;
+        toast('저장 완료','success'); loadStudents();
+        if (TAB==='edit' && $('editStudentSelect').value) loadStudentReports();
+      } catch(e){ toast(e.message,'error'); }
+      finally { btn.disabled=false; btn.textContent='💾 저장 (학부모 링크 생성)'; }
+    }
+    async function deleteCur(){
+      var stu = STUDENTS.find(function(s){return s.id===curStudentId;});
+      if (!confirm((stu?stu.name:'')+' '+curMonth+' 평가서를 삭제할까요? (학부모 링크도 무효화)')) return;
+      try { await api({ action:'delete', student_id:curStudentId, month:curMonth }); toast('삭제됨','success'); closeResult(); loadStudents(); if (TAB==='edit') loadStudentReports(); }
+      catch(e){ toast(e.message,'error'); }
+    }
+    function closeResult(){ $('resultSection').classList.remove('show'); }
+    async function sendKakao(){
+      if (!confirm('이 학생 학부모에게 월말평가서 카톡을 보낼까요?')) return;
+      try {
+        var d = await api({ action:'send', month:curMonth, student_ids:[curStudentId] });
+        if (d.solapi) toast('카톡 발송 완료 ('+d.sent+'건)','success');
+        else toast('솔라피 미설정 — 링크만 생성됨','');
+        loadStudents();
+      } catch(e){ toast(e.message,'error'); }
+    }
+    async function sendMonth(){
+      var m = $('sendMonth').value; if (!m){ toast('발송 월을 선택하세요','error'); return; }
+      if (!confirm(m + ' 저장된 평가서 중 미전송 학부모에게 일괄 발송할까요?')) return;
+      try {
+        var d = await api({ action:'send', month:m });
+        if (!d.links.length){ toast('그 달 저장된 평가서가 없어요','error'); return; }
+        if (d.solapi) toast('카톡 '+d.sent+'건 발송 (대상 '+d.links.length+'명)','success');
+        else toast('솔라피 미설정 — 링크만 생성됨 ('+d.links.length+'명)','');
+        loadStudents();
+      } catch(e){ toast(e.message,'error'); }
+    }
+
+    // ===== 미리보기 차트 (새로 생성 탭) =====
+    function renderCharts(p){
+      drawDonut('attendChart',[p.출석.정시등원,p.출석.지각,p.출석.결석],['#4caf50','#ff9800','#f44336']);
+      $('attendNum').textContent=p.총수업일수;
+      $('attendLegend').innerHTML='<span style="color:#4caf50">●</span> 정시 '+p.출석.정시등원+' <span style="color:#ff9800">●</span> 지각 '+p.출석.지각+' <span style="color:#f44336">●</span> 결석 '+p.출석.결석;
+      drawDonut('attitudeChart',[p.태도.상,p.태도.중,p.태도.하],['#667eea','#90caf9','#e0e0e0']);
+      var at=p.태도.상+p.태도.중+p.태도.하; $('attitudeNum').textContent=(at>0?Math.round(p.태도.상/at*100):0)+'%';
+      $('attitudeLegend').innerHTML='<span style="color:#667eea">●</span> 상 '+p.태도.상+' <span style="color:#90caf9">●</span> 중 '+p.태도.중+' <span style="color:#e0e0e0">●</span> 하 '+p.태도.하;
+      drawDonut('wordChart',[p.단어테스트.통과,p.단어테스트.미통과],['#667eea','#e0e0e0']);
+      $('wordNum').textContent=(p.단어테스트.총횟수>0?Math.round(p.단어테스트.통과/p.단어테스트.총횟수*100):0)+'%';
+      $('wordLegend').innerHTML='<span style="color:#667eea">●</span> 통과 '+p.단어테스트.통과+' <span style="color:#e0e0e0">●</span> 미통과 '+p.단어테스트.미통과;
+      var hw=p.과제||{상:0,중:0,하:0}; drawDonut('hwChart',[hw.상,hw.중,hw.하],['#4caf50','#ff9800','#f44336']);
+      var ht=hw.상+hw.중+hw.하; $('hwNum').textContent=(ht>0?Math.round(hw.상/ht*100):0)+'%';
+      $('hwLegend').innerHTML='<span style="color:#4caf50">●</span> 상 '+hw.상+' <span style="color:#ff9800">●</span> 중 '+hw.중+' <span style="color:#f44336">●</span> 하 '+hw.하;
+      var areas=[{k:'문법',i:'📐'},{k:'리딩',i:'📕'},{k:'단어',i:'🔤'}], html='';
+      areas.forEach(function(a){ var last=(p.최종진도||{})[a.k],first=(p.월초진도||{})[a.k]; if(!last)return;
+        var detail=((last.교재명||'')+' '+(last.유닛코드||'')+(last.제목?' — '+last.제목:'')).trim(); var ch='';
+        if(first&&first.교재명&&last.교재명&&first.교재명!==last.교재명) ch=first.교재명+' 완료 → '+last.교재명+' 시작';
+        else if(first&&first.유닛코드&&last.유닛코드&&first.유닛코드!==last.유닛코드) ch=first.유닛코드+' → '+last.유닛코드;
+        html+='<div class="progress-card"><div class="p-icon '+a.k+'">'+a.i+'</div><div><div class="p-title">'+a.k+'</div><div class="p-detail">'+esc(detail)+'</div>'+(ch?'<div class="p-change">📈 '+esc(ch)+'</div>':'')+'</div></div>';
+      });
+      $('progressCards').innerHTML=html||'<div class="no-data">진도 데이터가 없습니다</div>';
+      var tr=p.교재전환||[];
+      if(tr.length){ $('transitionCard').style.display='block'; $('transitionBadges').innerHTML=tr.map(function(t){return '<div class="transition-badge"><strong>'+esc(t.영역)+'</strong> '+esc(t.이전교재)+' <span class="arrow">→</span> '+esc(t.새교재)+'</div>';}).join(''); }
+      else $('transitionCard').style.display='none';
+    }
+    function drawDonut(id, vals, cols){
+      var c=$('c_'+id)||$(id); if(!c) return; var ctx=c.getContext('2d'), s=140, cx=s/2, cy=s/2, r=54, lw=16;
+      ctx.clearRect(0,0,s,s); var t=vals.reduce(function(a,b){return a+(b||0);},0);
+      if(t===0){ ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.strokeStyle='#e0e0e0'; ctx.lineWidth=lw; ctx.stroke(); return; }
+      var a=-Math.PI/2; vals.forEach(function(v,i){ if(!v)return; var sl=(v/t)*Math.PI*2; ctx.beginPath(); ctx.arc(cx,cy,r,a,a+sl); ctx.strokeStyle=cols[i]; ctx.lineWidth=lw; ctx.lineCap='round'; ctx.stroke(); a+=sl; });
+    }
+
+    loadStudents();
+  </script>
+</body>
+</html>
