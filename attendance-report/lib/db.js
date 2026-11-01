@@ -103,6 +103,9 @@ const 칸고치기 = {
   retest_sent:   { sql: "alter table daily_records add column if not exists retest_sent text;", file: "migrate_retest.sql" },
   auto:          { sql: "alter table tasks add column if not exists auto boolean not null default false;", file: "migrate_auto_tasks.sql" },
   voca_score:    { sql: "alter table daily_records add column if not exists voca_score text;", file: "migrate_daily_report.sql" },
+  // ✏️ 영작 테스트 — 두 칸이 같이 필요해서 한 줄에 둘 다 넣습니다
+  writing_test:  { sql: "alter table daily_records add column if not exists writing_test text, add column if not exists writing_score text;", file: "migrate_writing_test.sql" },
+  writing_score: { sql: "alter table daily_records add column if not exists writing_test text, add column if not exists writing_score text;", file: "migrate_writing_test.sql" },
   parent_note:   { sql: "alter table daily_records add column if not exists parent_note text;", file: "migrate_daily_report.sql" },
   report_sent:   { sql: "alter table daily_records add column if not exists report_sent text not null default '미전송';", file: "migrate_daily_report.sql" },
   books:         { sql: "alter table daily_records add column if not exists books jsonb not null default '{}'::jsonb;", file: "migrate_daily_report.sql" },

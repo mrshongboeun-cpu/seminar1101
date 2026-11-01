@@ -31,7 +31,7 @@ import { select, insert, patch, remove, dbConfigured, DbInputError } from "../li
 import { kstNow, toMinutes, addMinutes } from "../lib/time.js";
 import { sendAlimtalk, TPL } from "../lib/solapi.js";
 import { tocByBook, advanceProgress, normUnit, linkStatus, tasksForProgress, lastAttendedProgress } from "../lib/progress.js";
-import { isFail, retestQueueValue, needsRetest, retestHint, RETEST_PASS } from "../lib/retest.js";
+import { isFail, isWritingFail, retestQueueValue, needsRetest, retestHint, writingHint, RETEST_PASS, WRITING_PASS } from "../lib/retest.js";
 
 const GRACE = 10;       // 지각 유예(분)
 const LEAVE_SOON = 15;  // "곧 하원" 판단(예상 하원시간 15분 전부터)
@@ -337,7 +337,7 @@ export default async function handler(req, res) {
       const PREV_N = 8;   // 화면은 3회만 먼저 보여주고 「더 보기」로 8회까지
       const histAll = await select(
         "daily_records",
-        `date=lt.${date}&order=date.desc&select=student_id,date,progress,voca_test,voca_score,attitude,homework,lateness,note`
+        `date=lt.${date}&order=date.desc&select=student_id,date,progress,voca_test,voca_score,writing_test,writing_score,attitude,homework,lateness,note`
       );
       const histBy = {};
       for (const h of histAll) {
@@ -363,6 +363,8 @@ export default async function handler(req, res) {
             check_in: rec.check_in, check_out: rec.check_out, lateness: rec.lateness,
             attitude: rec.attitude, homework: rec.homework,
             voca_test: rec.voca_test, voca_score: rec.voca_score,
+            // ✏️ 영작 테스트 (결과·점수) — 단어테스트와 같은 방식
+            writing_test: rec.writing_test ?? null, writing_score: rec.writing_score ?? null,
             progress: rec.progress || {}, note: rec.note, parent_note: rec.parent_note,
             // 그날 행이 들고 있는 교재. 학생DB의 교재(위 books)와 다를 수 있습니다 —
             // 학생 관리에서 교재를 바꿔도 **이미 만들어진 행**은 옛 교재를 들고 있기 때문입니다.
@@ -374,6 +376,7 @@ export default async function handler(req, res) {
             //   needs_retest = 재시 안내 대상인가 / retest_hint = 점수칸 밑에 띄울 한 줄
             needs_retest: needsRetest(rec),
             retest_hint: retestHint(rec.voca_test, rec.voca_score),
+            writing_hint: writingHint(rec.writing_test, rec.writing_score),
           },
           prev: prev[0] ? { date: prev[0].date, progress: prev[0].progress || {} } : null,
           // 지난 수업 (최근 것이 앞) — 진도·단어테스트·태도·과제·지적
@@ -382,6 +385,8 @@ export default async function handler(req, res) {
             progress: h.progress || {},
             voca_test: h.voca_test || null,
             voca_score: h.voca_score || null,
+            writing_test: h.writing_test || null,
+            writing_score: h.writing_score || null,
             attitude: h.attitude || null,
             homework: h.homework || null,
             lateness: h.lateness || null,
@@ -517,11 +522,24 @@ export default async function handler(req, res) {
       for (const r of records) {
         const stu = stuBy[r.student_id];
         const rBooks = r.books || {}, sBooks = stu.books || {};
+        // 📘 단어 — 단어 교재의 그날 유닛
         const book = String(rBooks["단어"] || sBooks["단어"] || "-");
         const unit = unitLabel((r.progress || {})["단어"]) || "-";
+        // ✏️ 영작 — 문법 교재의 그날 유닛을 범위로 씁니다
+        //   (영작 전용 교재를 따로 쓰게 되면 "문법" 을 그 과목 이름으로 바꾸세요)
+        const wBook = String(rBooks["문법"] || sBooks["문법"] || "-");
+        const wUnit = unitLabel((r.progress || {})["문법"]) || "-";
+        // 결과 한 마디 — 그날 안 본 테스트는 「-」
+        const 결과 = (t, sc, fail) => (String(t || "").trim() || String(sc || "").trim())
+          ? (fail ? "미통과" : "통과") : "-";
+        const vocaFail = isFail(r.voca_test, r.voca_score);
+        const writingFail = isWritingFail(r.writing_test, r.writing_score);
         const preview = {
           student_id: stu.id, name: stu.name, phone: stu.phone || "",
           book, unit, score: r.voca_score || "-",
+          voca_result: 결과(r.voca_test, r.voca_score, vocaFail),
+          writing_book: wBook, writing_unit: wUnit, writing_score: r.writing_score || "-",
+          writing_result: 결과(r.writing_test, r.writing_score, writingFail),
           already: r.retest_sent === "전송",
         };
         const phone = String(stu.phone || "").replace(/[^0-9]/g, "");
@@ -533,7 +551,15 @@ export default async function handler(req, res) {
           "#{날짜}": date,
           "#{단어교재}": book,
           "#{단어테스트}": unit,
+          // 예전 템플릿(단어만)을 쓰는 동안에도 나가도록 #{점수} 도 그대로 보냅니다
           "#{점수}": preview.score,
+          // ✏️ 단어+영작 템플릿용 (템플릿에 없는 변수는 솔라피가 무시합니다)
+          "#{단어점수}": preview.score,
+          "#{단어결과}": preview.voca_result,
+          "#{영작교재}": wBook,
+          "#{영작테스트}": wUnit,
+          "#{영작점수}": preview.writing_score,
+          "#{영작결과}": preview.writing_result,
         });
         if (send.success) {
           await patch("daily_records", `id=eq.${r.id}`, { retest_sent: "전송" });
@@ -544,7 +570,7 @@ export default async function handler(req, res) {
         }
       }
       // pass = 통과 기준(%) — 미리보기 모달이 "무슨 기준으로 고른 건지" 를 적어줍니다
-      return res.status(200).json({ date, total: results.length, sent, dryRun, results, pass: RETEST_PASS, solapi: Boolean(TPL.retest) });
+      return res.status(200).json({ date, total: results.length, sent, dryRun, results, pass: RETEST_PASS, writing_pass: WRITING_PASS, solapi: Boolean(TPL.retest) });
     }
 
     // ── 학생 저장(추가/수정) ──
@@ -685,7 +711,7 @@ export default async function handler(req, res) {
       const { student_id, date, fields } = req.body;
       const d = date || now.date;
       const row = await ensureTodayRow(student_id, d);
-      const allow = ["attitude", "homework", "voca_test", "voca_score", "progress",
+      const allow = ["attitude", "homework", "voca_test", "voca_score", "writing_test", "writing_score", "progress",
                      "note", "parent_note", "lateness", "check_out"];
       const body = {};
       for (const k of allow) if (k in (fields || {})) body[k] = fields[k];
@@ -695,7 +721,10 @@ export default async function handler(req, res) {
       //   점수만 적고 통과/불통과를 안 누르는 게 흔해서 점수까지 같이 봅니다.
       const 새결과 = "voca_test" in (fields || {}) ? fields.voca_test : row.voca_test;
       const 새점수 = "voca_score" in (fields || {}) ? fields.voca_score : row.voca_score;
-      const q = retestQueueValue(row.retest_sent, 새결과, 새점수);
+      // ✏️ 영작도 같이 — 둘 중 하나라도 못 넘기면 큐에 올라갑니다
+      const 영작결과 = "writing_test" in (fields || {}) ? fields.writing_test : row.writing_test;
+      const 영작점수 = "writing_score" in (fields || {}) ? fields.writing_score : row.writing_score;
+      const q = retestQueueValue(row.retest_sent, 새결과, 새점수, 영작결과, 영작점수);
       if (q !== undefined) body.retest_sent = q;
       const upd = (await patch("daily_records", `id=eq.${row.id}`, body))[0];
       // 진도를 고쳤으면 그 유닛의 자동 과제도 따라 바뀌어야 합니다.
@@ -709,6 +738,7 @@ export default async function handler(req, res) {
         record: upd,
         needs_retest: needsRetest(upd),
         retest_hint: retestHint(upd.voca_test, upd.voca_score),
+        writing_hint: writingHint(upd.writing_test, upd.writing_score),
       });
     }
 
@@ -855,6 +885,8 @@ export default async function handler(req, res) {
           books: r.books || {},
           voca_test: r.voca_test || null,
           voca_score: r.voca_score || null,
+          writing_test: r.writing_test || null,
+          writing_score: r.writing_score || null,
           attitude: r.attitude || null,
           homework: r.homework || null,
           lateness: r.lateness || null,

@@ -1,4 +1,5 @@
 // 재시 안내 대상 판정 — 「불통과」 버튼 **그리고 점수칸** 둘 다 봅니다.
+// 단어 테스트 + ✏️ 영작 테스트 — 둘 중 하나라도 못 넘기면 재시 안내 대상입니다.
 //
 // 왜 점수까지 보나:
 //   선생님은 보통 점수만 적습니다 (「12/20」). 예전에는 그러면 재시 안내가
@@ -35,6 +36,13 @@ const num = (v, dflt) => {
 export const RETEST_PASS = num(process.env.RETEST_PASS_PERCENT, PASS_DEFAULT);
 export const VOCA_FULL = num(process.env.VOCA_FULL_SCORE, FULL_DEFAULT);
 
+// ✏️ 영작 테스트 통과 기준(%) — 기본은 **단어와 같은 값**입니다.
+//    영작만 기준을 다르게 하고 싶으면 아래 null 을 숫자(예: 70)로 바꾸세요.
+//    (Vercel 환경변수 RETEST_WRITING_PASS_PERCENT 를 넣으면 그게 이깁니다)
+//    만점(숫자만 적었을 때)은 단어와 같은 VOCA_FULL 을 씁니다 → 「9/10」 처럼 적어주세요.
+const WRITING_PASS_DEFAULT = null;
+export const WRITING_PASS = num(process.env.RETEST_WRITING_PASS_PERCENT, WRITING_PASS_DEFAULT ?? RETEST_PASS);
+
 // 단어테스트 "못 넘어갔다" 판정 — 운영은 '불통과', 노션에서 옮겨오면 '미통과',
 // 손으로 '재시' 라고 적어둔 행도 있습니다(운영 isFailResult 와 같은 범위).
 // ⚠️ '1차미통과' 도 '통과' 를 품고 있으니 **미/불통과를 먼저** 봐야 합니다.
@@ -62,17 +70,30 @@ export function scorePercent(v) {
   return VOCA_FULL > 0 ? (n / VOCA_FULL) * 100 : null;
 }
 
-// 이 행이 "단어를 못 넘겼다" 인가 — 결과칸이 비었을 때만 점수로 봅니다.
-export function isFail(vocaTest, vocaScore) {
+// 이 행이 "테스트를 못 넘겼다" 인가 — 결과칸이 비었을 때만 점수로 봅니다.
+//   pass 를 안 주면 단어 기준(RETEST_PASS). 영작은 isWritingFail() 을 쓰세요.
+export function isFail(vocaTest, vocaScore, pass = RETEST_PASS) {
   const t = String(vocaTest || "").trim();
   if (t) return isFailText(t);
   const p = scorePercent(vocaScore);
-  return p === null ? false : p < RETEST_PASS;
+  return p === null ? false : p < pass;
+}
+
+// ✏️ 영작 테스트를 못 넘겼나 (규칙은 단어와 같고 기준만 WRITING_PASS)
+export function isWritingFail(writingTest, writingScore) {
+  return isFail(writingTest, writingScore, WRITING_PASS);
+}
+
+// 이 행에서 **단어든 영작이든 하나라도** 못 넘겼나
+export function recordFails(rec) {
+  if (!rec) return false;
+  return isFail(rec.voca_test, rec.voca_score) || isWritingFail(rec.writing_test, rec.writing_score);
 }
 
 // 화면 점수칸 밑에 띄울 한 줄 — 선생님이 "올라갔나 안 올라갔나" 를 눈으로 봅니다.
 // 조용히 안 올라가는 게 제일 나쁘기 때문에, 판정 못 한 경우도 말해줍니다.
-export function retestHint(vocaTest, vocaScore) {
+//   pass 를 안 주면 단어 기준. 영작은 writingHint() 를 쓰세요.
+export function retestHint(vocaTest, vocaScore, pass = RETEST_PASS) {
   const t = String(vocaTest || "").trim();
   const s = String(vocaScore || "").trim();
   if (t) {
@@ -87,18 +108,26 @@ export function retestHint(vocaTest, vocaScore) {
       : "만점을 몰라 판정 못 했어요 — 「18/20」 처럼 적으시거나, 위 통과/불통과를 눌러주세요";
   }
   const pct = Math.round(p);
-  return p < RETEST_PASS
-    ? `🔁 ${pct}% (기준 ${RETEST_PASS}%) — 재시 안내 대상`
-    : `${pct}% (기준 ${RETEST_PASS}%) — 통과`;
+  return p < pass
+    ? `🔁 ${pct}% (기준 ${pass}%) — 재시 안내 대상`
+    : `${pct}% (기준 ${pass}%) — 통과`;
+}
+
+// ✏️ 영작 점수칸 밑에 띄울 한 줄
+export function writingHint(writingTest, writingScore) {
+  return retestHint(writingTest, writingScore, WRITING_PASS);
 }
 
 // 재시 안내 카톡 큐 — 운영(studyplanner admin-api 의 `단어카톡`)과 같은 규칙.
 //   · 못 넘김 → '미전송'(발송 대기)   · 통과로 고쳐지면 → 비움(대기 해제)
 //   · 이미 '전송' 인 행은 안 건드림 (두 번 보내지 않게)
 // 바꿀 필요가 없으면 undefined 를 돌려줘서 호출하는 쪽이 아무것도 안 하게 합니다.
-export function retestQueueValue(cur, vocaTest, vocaScore) {
+//   ✏️ 영작(writingTest/writingScore)도 같이 봅니다 — **둘 중 하나라도** 못 넘기면 대기.
+//   (재시 안내는 하루 한 번, 단어·영작을 한 카톡에 같이 담아 보냅니다)
+export function retestQueueValue(cur, vocaTest, vocaScore, writingTest, writingScore) {
   if (cur === "전송") return undefined;
-  if (isFail(vocaTest, vocaScore)) return cur === "미전송" ? undefined : "미전송";
+  if (isFail(vocaTest, vocaScore) || isWritingFail(writingTest, writingScore))
+    return cur === "미전송" ? undefined : "미전송";
   return cur === "미전송" ? null : undefined;
 }
 
@@ -107,5 +136,5 @@ export function retestQueueValue(cur, vocaTest, vocaScore) {
 //  (노션에서 옮겨와 큐를 안 거친 행도 놓치지 않으려고 결과·점수까지 같이 봅니다)
 export function needsRetest(rec) {
   if (!rec || rec.retest_sent === "전송") return false;
-  return rec.retest_sent === "미전송" || isFail(rec.voca_test, rec.voca_score);
+  return rec.retest_sent === "미전송" || recordFails(rec);
 }

@@ -81,6 +81,7 @@
 - `sql/migrate_tasks.sql` — 학생앱 과제 표 추가 (+ 학생ID·PIN·담당이 빈 학생 점검)
 - `sql/migrate_retest.sql` — 재시 안내 칸(`retest_sent`) 추가
 - `sql/migrate_auto_tasks.sql` — 유닛 과제 자동 배정 칸(`tasks.auto`) 추가
+- `sql/migrate_writing_test.sql` — ✏️ 영작 테스트 칸(`writing_test`·`writing_score`) 추가
 
 세 마이그레이션은 **여러 번 돌려도 안전**합니다. 다 돌렸는지는 아래 한 줄로 확인하세요 —
 `SQL Editor` 에 붙여넣고 Run 하면 **전부 1** 이 나와야 합니다.

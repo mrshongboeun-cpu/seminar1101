@@ -13,6 +13,7 @@
 import {
   RETEST_PASS, VOCA_FULL,
   scorePercent, isFailText, isFail, retestHint, retestQueueValue, needsRetest,
+  WRITING_PASS, isWritingFail, writingHint, recordFails,
 } from "../../lib/retest.js";
 
 let fail = 0;
@@ -80,6 +81,20 @@ check("큐를 안 거쳤어도 점수가 미달이면 대상", needsRetest({ voc
 check("점수가 충분하면 대상 아님", needsRetest({ voca_test: null, voca_score: "18/20" }) === false);
 check("빈 행은 대상 아님", needsRetest({}) === false);
 check("행이 없으면 대상 아님", needsRetest(null) === false);
+
+// ── 7. ✏️ 영작 테스트 — 단어와 같은 규칙, 둘 중 하나라도 못 넘기면 재시 ──
+check("영작 기준도 0 이 아니다 (기본 = 단어 기준)", WRITING_PASS > 0 && WRITING_PASS <= 100, WRITING_PASS);
+check("영작 점수 미달 → 못 넘김", isWritingFail("", "6/10") === true);
+check("영작 점수 충분 → 통과", isWritingFail("", "9/10") === false);
+check("영작 「불통과」 버튼 → 못 넘김", isWritingFail("불통과", "") === true);
+check("영작 점수 안내도 띄운다", /재시 안내 대상/.test(writingHint("", "6/10")), writingHint("", "6/10"));
+check("단어 통과 + 영작 미달 → 행은 못 넘김", recordFails({ voca_test: "통과", writing_score: "5/10" }) === true);
+check("둘 다 통과 → 행은 통과", recordFails({ voca_score: "18/20", writing_score: "9/10" }) === false);
+check("영작만 미달이어도 큐에 올라간다", retestQueueValue(null, "통과", "20/20", "", "5/10") === "미전송");
+check("영작을 통과로 고치면 대기 해제", retestQueueValue("미전송", "통과", "20/20", "통과", "5/10") === null);
+check("단어 미달 + 영작 통과 → 그대로 대기", retestQueueValue("미전송", "", "10/20", "통과", "") === undefined);
+check("영작만 미달인 행도 재시 대상", needsRetest({ voca_test: "통과", writing_test: null, writing_score: "4/10" }) === true);
+check("예전 호출(영작 인자 없음)도 그대로 동작", retestQueueValue(null, "", "12/20") === "미전송");
 
 console.log(fail ? `\n❌ 실패 ${fail}건` : `\n✅ 전부 통과 (기준 ${RETEST_PASS}%)`);
 process.exit(fail ? 1 : 0);

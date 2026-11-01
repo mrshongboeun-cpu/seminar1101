@@ -35,6 +35,10 @@
 - 학생 카드 화면 → `student_card.html` / 데이터 → `api/attendance.js` 의 `student-history`
 - 재시 안내 카톡 → `api/attendance.js` 의 `send-retest` · **판정·큐 규칙은 `lib/retest.js` 한 곳**
   (「불통과」 버튼 **또는 점수 기준 미달** → `save-record` 가 자동으로 큐에 올림)
+- ✏️ **영작 테스트** = `daily_records.writing_test`/`writing_score` (단어테스트와 같은 방식, `sql/migrate_writing_test.sql`).
+  단어·영작 **둘 중 하나라도** 못 넘기면 재시 대상이고, 재시 카톡 한 통에 둘 다 담깁니다.
+  영작 범위 = 그날 **문법** 교재 유닛. 영작 통과 기준은 `lib/retest.js` 의 `WRITING_PASS_DEFAULT`
+  (null = 단어와 같음, 환경변수 `RETEST_WRITING_PASS_PERCENT` 가 이김).
 - **재시 통과 기준(%)·만점 → `lib/retest.js` 맨 위 두 줄** (`PASS_DEFAULT`=80, `FULL_DEFAULT`=0)
   환경변수 `RETEST_PASS_PERCENT`/`VOCA_FULL_SCORE` 가 있으면 그게 이깁니다.
   `FULL_DEFAULT`=0 은 **「18」처럼 만점 없이 적은 점수는 판정하지 않는다**는 뜻 —
